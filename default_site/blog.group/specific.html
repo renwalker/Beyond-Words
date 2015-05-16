@@ -1,0 +1,263 @@
+{embed='includes/header'}
+{embed='blog/breadcrumbs_blog'}
+{exp:disqus:sync int="NOW"}
+
+<div role="main" class="row">
+	{exp:channel:entries channel="blog" limit="1" url_title="{segment_2}" disable="categories|category_fields|custom_fields|member_data|pagination"}
+	{if no_results}
+	{redirect="404"}
+	{/if}
+	{/exp:channel:entries}
+
+	{embed='blog/sidebar_blog'}
+	{exp:channel:entries channel="blog" limit="1" require_entry="yes" url_title="{segment_2}"}
+	{!-- I don't know why putting the redirect below didn't work, and that's why it's above... Maybe pagination? -PM --}
+	{!-- {if no_results}
+		{redirect="404"}
+	{/if} --}
+	<div class="six columns blog_post main-content">
+
+		<header>
+			{categories}
+				{if category_id == "478"}
+					<h6 class="guest">Guest Blog</h6>
+				{if:elseif category_id=="472"}
+					<h6 class="guest">Author Interview</h6>
+				{/if}
+			{/categories}
+
+			<h1 class="title">{title}</h1>
+
+			{if guest_author !="" || guest_author_2 !=""}
+				{if guest_author}
+					<h3 class="author">By {exp:playa:children field="guest_author"}{title}{/exp:playa:children}</h3>
+				{if:elseif guest_author_2 && guest_author ==""}
+					<h3 class="author">By {guest_author_2}{guest_name}{/guest_author_2}</h3>
+				{/if}
+			{/if}
+
+
+
+		</header>
+
+		<div class="post_info">
+			<span>
+				Posted on {entry_date format="%F %j, %Y"}
+			</span>
+			<span class="category">
+				<ul>
+					{categories}
+						{if category_group=="26"} <!-- blog specific -->
+							<li><a href="{path='blog/index'}">{category_name}</a></li>
+						{/if}
+						{if parent_id=="70"} <!-- special tags -->
+							<li><a href="{path='blog/index'}">{category_name}</a></li>
+						{/if}
+						{if parent_id=="34"} <!-- genre -->
+							<li><a href="{path='blog/index'}">{category_name}</a></li>
+						{/if}
+						{if parent_id=="58"} <!-- gifts -->
+							<li><a href="{path='blog/index'}">{category_name}</a></li>
+						{/if}
+					{/categories}
+				</ul>
+			</span>
+		</div>
+
+	<div class="content">
+		{blog_content}
+	</div>
+
+	<!-- Social Share -->
+	 <section class="social_share">
+	 	<strong>SHARE ARTICLE:</strong>
+        <div class="hold_insert">
+        	<!-- AddThis Button BEGIN -->
+			<div class="addthis_toolbox addthis_default_style ">
+				<a class="addthis_button_pinterest_pinit"></a>
+				<a class="addthis_button_facebook_like" fb:like:layout="button_count"></a>
+				<a class="addthis_button_tweet"></a>
+
+				<a class="addthis_counter addthis_pill_style"></a>
+			</div>
+			<script type="text/javascript" src="//s7.addthis.com/js/300/addthis_widget.js#pubid=xa-50c7cedf2ab8827d"></script>
+			<!-- AddThis Button END -->
+        </div>
+      </section>
+
+
+	<!-- GUEST AUTHOR BIO -------------------------->
+	<!-- option 1 -->
+	{exp:playa:children field="guest_author"}
+	<section class="blog_author">
+	<div class="row">
+		<div class="four columns">
+			{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+			<div class="round_image" style="background-image:url({image:url:medium});"></div>
+			{/exp:channel_images:images}
+		</div>
+		<div class="eight columns">
+			<h6 class="guest">About Our Guest Blogger</h6>
+			<h2 class="title">{title}</h2>
+			{if short_bio !=""}
+				{short_bio}
+			{if:else}
+				{full_bio strip_tags="true" allowable_tags="<a><em>" word_limit="60"}</em></a><a href="{site_url}authors/{url_title}">read more</a>
+			{/if}
+		</div>
+	</div>
+	</section>
+	{/exp:playa:children}
+
+	<!-- option 2 -->
+	{if guest_author ==""}
+	{guest_author_2}
+	<section class="blog_author">
+	<div class="row">
+		<div class="four columns">
+			<div class="round_image" style="background-image:url({guest_image});"></div>
+		</div>
+		<div class="eight columns">
+			<h6 class="guest">About Our Guest Blogger</h6>
+			<h2 class="title">{guest_name}</h2>
+			{guest_bio}
+		</div>
+	</div>
+	</section>
+	{/guest_author_2}
+	{/if}
+
+		<section class="comment_section" id="comments">
+			<h2 class="location">Leave a Comment</h2>
+			<p>Huzzah! You've decided to leave a comment. That's superb! Please keep in mind that comments are moderated. So, please be civil and do not post spam.  Let's have a personal and meaningful conversation instead. Thanks for reading the Beyond Words’ Blog!</p>
+			{exp:disqus:comment id="{entry_id}"}
+		</section>
+
+
+	</div><!-- end middle -->
+
+
+	<div class="right-side columns">
+
+	<!-- Related Product -->
+	{if blog_product != ""}
+		{exp:playa:children field="blog_product"}
+		<aside class="right_sidebar related_item">
+			<header>
+				<h3 class="heading"><span class="serif">Related</span> Product</h3>
+			</header>
+			<div class="inner_content">
+				<h3 class="title">{title}</h3>
+				<h5 class="author">
+					{embed="blog/_authorofbook" entry_id="{entry_id}"}
+				</h5>
+				<div class="sidebar_product product">
+					<div class="{if  type== 'Book'}book{if:elseif  type== 'DVD'}dvd{if:else}gift{/if}">
+						{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+							<img src="{image:url:grid}" title="{title}" />
+						{/exp:channel_images:images}
+					</div>
+					{if "{product_options}1{/product_options}" == "1"}
+						{product_options}
+							<a href="#ADD" class="button button_add category_add" data-product="{entry_id}" data-format="{option_value}">Add to Basket</a>
+						{/product_options}
+					{if:else}
+						{product_options}
+							{if count == "1" || count == "2"}
+								<a href="#ADD" class="button button_add category_add button_{count}" data-product="{entry_id}" data-format="{option_value}">Add {option_name}</a>
+							{/if}
+						{/product_options}
+					{/if}
+
+				</div>
+				<p>{product_description strip_tags="true" allowable_tags="<a><em>" word_limit="30"}</em></a></p>
+			</div>
+			<footer>
+				<ul class="link_list">
+					<li><a href="{site_url}product/{url_title}">Read More</a></li>
+				</ul>
+			</footer>
+		</aside>
+		{/exp:playa:children}
+	{/if}
+
+
+	<!-- Related Author -->
+	{if blog_author != "" }
+		{exp:playa:children field="blog_author"}
+		<aside class="right_sidebar related_item sidebar_author">
+			<header>
+				<h3 class="heading"><span class="serif">Related</span> Author</h3>
+			</header>
+			<div class="inner_content">
+					<h3 class="title">{title}</h3>
+					{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+						<img src="{image:url:medium}" title="{title}" class="author_image"/>
+						{if image:no_images}
+							<img src="{site_url}images/author_placeholder.jpg" title="{title}" />
+					     {/if}
+					{/exp:channel_images:images}
+
+					<p>
+							{if short_bio !=""}
+								{short_bio}
+							{if:else}
+								{full_bio strip_tags="true" allowable_tags="<a><em>" word_limit="30"}</em></a>
+							{/if}
+					</p>
+
+			</div>
+			<footer>
+				<ul class="link_list">
+					<li><a href="{site_url}authors/{url_title}#bio">Read Full Bio</a></li>
+				</ul>
+			</footer>
+		</aside>
+		{/exp:playa:children}
+	{/if}
+
+
+	<!-- Related Event -->
+	{if blog_event != ""}
+		{exp:playa:children field="blog_event"}
+			<aside class="right_sidebar related_item">
+				<header>
+					<h3 class="heading"><span class="serif">Related</span> Event</h3>
+				</header>
+				<div class="inner_content">
+					{embed="blog/_event" ids="{entry_id}"}
+				</div>
+				<footer>
+					<ul class="link_list">
+						<li><a href="{site_url}events/{url_title}">Event Details</a></li>
+					</ul>
+				</footer>
+			</aside>
+		{/exp:playa:children}
+	{/if}
+
+
+	<!-- Related Products: 3 newest products in category -->
+	{exp:gwcode_categories entry_id="{entry_id}" depth="2" limit="1" orderby="random" sort="asc" style="simple" class="no-bullet"}
+	<aside class="right_sidebar related_item sidebar_author">
+		<header>
+			<h3 class="heading"><span class="serif">Also in</span> {cat_name}</h3>
+		</header>
+		<div class="inner_content">
+				{embed="blog/_category-books" ids="{cat_id}"}
+		</div>
+		<footer>
+			<ul class="link_list">
+				<li><a href="{site_url}books/{cat_url_title}">View All in This Category</a></li>
+			</ul>
+		</footer>
+	</aside>
+	{/exp:gwcode_categories}
+
+
+	</div>
+
+{/exp:channel:entries}
+
+</div>
+{embed='includes/footer'}

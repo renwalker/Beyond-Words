@@ -1,0 +1,29 @@
+<div class="right-side columns">
+	<div id="newsletter_events_message_target">
+		{!-- only for the off chance that js is turned off. Otherwise handled by /templates/js/ajax-methods.js and /templates/default_site/contact.group/newsletter_handler.html --}
+		<?php 
+
+		    include_once './templates/default_site/contact.group/newsletter_handler.php'; 
+		    $form_result = handle_newsletter('events_newsletter');
+
+		    echo $form_result['message'];
+
+		?>
+	</div>
+	<div class="newsletter_yellow waves yellow_waves">
+		<h2 class="note">Don’t Miss Out on the Fun!</h2>
+		<p>Want to be the first to know about upcoming events in your area?<br/>Sign up for our newsletter!</p>
+		<form action="" method="post" class="newsletter_ajax_form" data-message-target="#newsletter_events_message_target">
+			<input type="hidden" name="XID" value="{XID_HASH}" /> 
+			<input type="hidden" name="form_name" value="events_newsletter"/>
+			<input type="text" placeholder="Enter your name" id="newsletter-name" name="full_name">
+			<div class="<?php 
+		        if(isset($form_result['inline_errors']['email_address'])) {
+
+		            echo $form_result['inline_errors']['email_address'];
+
+		        } ?>"><input type="email" placeholder="...and email!" id="newsletter-email" name="email_address"></div>
+			<button type="submit" class="button_arrows_white">Yeah! Sign Me Up</button>
+		</form>
+	</div>
+</div>

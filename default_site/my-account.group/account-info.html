@@ -1,0 +1,264 @@
+<?
+	require_once($_SERVER['DOCUMENT_ROOT'].'/templates/includes/arrayList.php');
+
+	$this->EE =& get_instance();
+
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->library('encrypt');
+	$this->EE->load->model('order_model');
+	$this->EE->load->model('cartthrob_members_model');
+	$this->EE->load->library('cartthrob_emails');
+	$this->EE->load->library('cartthrob_session');
+
+	$this->EE->load->library('image_helper');
+	$this->EE->load->model('channel_images_model');
+	$this->EE->load->model('cartthrob_entries_model');
+	$this->EE->load->model('product_model');
+	$this->EE->load->model('member_model');
+	$this->EE->load->helper('data_formatting');
+
+
+	$member_id = $this->EE->session->userdata('member_id');
+	$memberInfo = $this->EE->member_model->get_all_member_data($member_id);
+	$memberInfoArray = $memberInfo->result_array();
+	
+	$orders = $this->EE->order_model->get_member_orders($member_id);
+	ksort($orders);
+	foreach($orders as $keyOrder => $valOrder){
+
+		$orderData[$valOrder['unique_identifier']]['order_entry_ids'][] = $valOrder['entry_id'];
+		$orderData[$valOrder['unique_identifier']]['order_title'] = $valOrder['title'];
+		$orderData[$valOrder['unique_identifier']]['entry_date'] = $valOrder['entry_date'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_first_name'] = $valOrder['order_billing_first_name'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_last_name'] = $valOrder['order_billing_last_name'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_address'] = $valOrder['order_billing_address'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_address2'] = $valOrder['order_billing_address2'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_state'] = $valOrder['order_billing_state'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_zip'] = $valOrder['order_billing_zip'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_city'] = $valOrder['order_billing_city'];
+		$orderData[$valOrder['unique_identifier']]['order_billing_country'] = $valOrder['order_billing_country'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_first_name'] = $valOrder['order_shipping_first_name'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_last_name'] = $valOrder['order_shipping_last_name'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_address'] = $valOrder['order_shipping_address'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_address2'] = $valOrder['order_shipping_address2'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_city'] = $valOrder['order_shipping_city'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_state'] = $valOrder['order_shipping_state'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_zip'][] = $valOrder['order_shipping_zip'];
+		$orderData[$valOrder['unique_identifier']]['order_shipping_country'] = $valOrder['order_shipping_country'];
+
+		$orderData[$valOrder['unique_identifier']]['order_shipping'][] = $valOrder['order_shipping'];
+		$orderData[$valOrder['unique_identifier']]['order_total'] += $valOrder['order_total'];
+
+		$products = $this->EE->order_model->get_order_items($valOrder['entry_id']);
+		foreach($products as $keyProduct => $valProduct)
+		{
+			$orderData[$valOrder['unique_identifier']]['order_products'][] = $valProduct;
+		}
+	}
+
+?>	
+
+<div class="eight columns">
+	<div class="row">
+		<h1 class="title">Orders</h1>
+	</div>
+	<div class="row">
+	<?
+		if (count($orderData))
+		{
+		?>		
+		<table width="100%" cellspacing="0" cellpadding="0" border="0" class="cart_table">
+		<thead>
+		<tr>
+			<th>
+				<span>Order #</span>
+			</th>
+
+			<th align="center">
+				<span>Items</span>
+			</th>
+			<th>
+				<span>Total Price</span>
+			</th>
+			<th>
+				<span>Date</span>
+			</th>
+		</tr>
+		</thead>
+		<tbody>	
+		<?
+			foreach($orderData as $keyOrder => $valOrder)
+			{
+				?>
+				<tr>
+					<!-- Order Number Info -->
+					<td>
+						<h3 class="title"><a href="#<?=$keyOrder?>" class="fancybox"><?=$valOrder['order_title']?></a></h3>
+						<div id="<?=$keyOrder?>" style="display:none;">
+						<div class="row"><h1><?=$valOrder['order_title']?></h1></div>
+						<div class="row">
+							<div class="nine columns">
+								<h2>Ordered Items</h2>
+								<table cellspacing="0" cellpadding="0" border="0" class="cart_table">
+								<form method="POST" action="">
+								</form>
+								<thead>
+								<tr>
+									<th>
+										<span>Item</span>
+									</th>
+
+									<th align="center">
+										<span>Price</span>
+									</th>
+									<th>
+										<span>Quantity</span>
+									</th>
+									<th>
+										<span>Total Price</span>
+									</th>
+								</tr>
+								</thead>
+								<tbody>
+								<?
+									foreach($valOrder['order_products'] as $keyProduct => $valProduct)
+									{
+									
+									?>
+										<tr>
+											<td class="product_info">
+												<h3 class="title"><?=$valProduct['title']?></h3>
+												<?
+													if (isset($valProduct['customized_message']) and $valProduct['customized_message'] != '')
+													{
+														echo '<b>Customized Message:</b> '.$valProduct['customized_message'];
+													}
+												?>
+												<h4 class="format"><?=$valProduct['product_type']?></h4>
+											</td>
+											<td align="center" class="price">
+												 $<span class="indvProduct2"><?=money_format('%i', $valProduct['price'])?></span>
+											</td>
+											<td align="center">
+												<?=$valProduct['quantity']?>
+											</td>
+											<td class="price">
+												 $<span class="totalRowPrice2"><?=money_format('%i', $valProduct['price']*$valProduct['quantity'])?></span>
+											</td>
+										</tr>
+									<?
+									}
+								?>
+								</tbody>
+								<tfoot>
+								<tr>
+									<!-- Discount input -->
+									<td colspan=""></td>
+									<!-- Totals -->
+									<td colspan="3">
+										<table width="100%" cellspacing="0" cellpadding="0" border="0" class="totals">
+										<tbody>
+										<tr>
+											<td>
+												Shipping
+											</td>
+											<td>
+												<?
+												$shippingAmount = 0;
+												foreach($valOrder['order_shipping'] as $indShippingKey => $indShippingVal)
+												{
+													$shippingAmount += $indShippingVal;
+												}
+												?>
+												$<span class="subtotalAmount"><?=money_format('%i', $shippingAmount)?></span>
+											</td>
+										</tr>
+										<tr>
+											<td>
+												Total
+											</td>
+											<td>
+												$<span class="subtotalAmount"><?=money_format('%i', $valOrder['order_total'])?></span>
+											</td>
+										</tr>
+										
+										</tbody>
+										</table>
+									</td>
+
+								</tr>
+
+								</tfoot>
+								</table>
+							</div>
+							<div class="three columns">
+								<div class="row">
+									<h2>Billing Information</h2>
+									<div class="inner_content">
+										<?
+											echo '<h3 class="title">'.$valOrder['order_billing_first_name'].' '.$valOrder['order_billing_last_name'].'</h3>';
+											echo '<div class="myaccount">';
+												echo '<br />';
+												echo $valOrder['order_billing_address'].' '.$valOrder['order_billing_address2'] ;
+												echo '<br />';
+												echo $valOrder['order_billing_city'].', '.$statesArray[$valOrder['order_billing_state']].' '.$valOrder['order_billing_zip'];
+												echo '<br />';
+												echo $countryArray[$valOrder['order_billing_country']];
+											echo '</div>';
+										?>
+									</div>
+									<br />
+									<h2>Shipping Information</h2>
+									<div class="inner_content">
+										<?
+											echo '<h3 class="title">'.$valOrder['order_shipping_first_name'].' '.$valOrder['order_shipping_last_name'].'</h3>';
+											echo '<div class="myaccount">';
+												echo '<br />';
+												echo $valOrder['order_shipping_address'].' '.$valOrder['order_shipping_address2'];
+												echo '<br />';
+												echo $valOrder['order_shipping_city'].', '.$statesArray[$valOrder['order_shipping_state']].' '.$valOrder['order_shipping_zip'];
+												echo '<br />';
+												echo $countryArray[$valOrder['order_shipping_country']];
+											echo '</div>';
+										?>
+									</div>
+								</div>
+							</div>
+							</div>
+						</div>
+					</td>
+					<!-- Price per unit -->
+					<td align="center">
+						<?=count($valOrder['order_products'])?>
+					</td>
+					<!-- Quantity -->
+					<td>
+						 $<span><?=money_format('%i', $valOrder['order_total'])?></span>
+					</td>
+					<!-- Total Price (Price * Qty) -->
+					<td> 
+						<?=date('M j', $valOrder['entry_date']);?><sup><?=date('S', $valOrder['entry_date']);?></sup><?=date(', Y', $valOrder['entry_date']);?>
+					</td>
+				</tr>
+				<?
+			}
+		?>
+		</tbody>
+		<!-- Table Footer -->
+		</table>
+		<?
+		}
+		else
+		{
+			echo '<h3>There are currently no recorded orders.</h3>';
+		}
+	?>
+	</div>
+</div>
+
+<div class="right-side columns">
+	{embed="my-account/account-sidebar"}
+</div>

@@ -1,0 +1,38 @@
+{if member_group == 1}
+<div class="twelve columns">
+	<div class="row">
+		<h1 class="title">Digital Products</h1>
+	</div>
+	<div class="row">
+		{exp:channel:entries channel="products" search:type="Video|Digital" status="Open|Closed"}
+			<div class="two column" style="float:left;">
+				<h4>{title}</h4>
+				{product_image limit="1"}
+					{if type == "Video"}
+						<a href="#{entry_id}" class="fancy_video">
+					{/if}
+						<img src="{image:url}" />
+					{if type == "Video"}
+						</a>
+					{/if}
+				{/product_image}
+
+				{if type == "Digital"}
+					{digital_assets}
+						<h4 style="padding:5px;"><a href="{file}"><span style="color:#000;">{row_count}.</span> {file_title}</a></h4></center>
+					{/digital_assets}
+				{/if}
+				{if type == "Video"}
+					<p><h4><a href="#{entry_id}" class="fancy_video">&nbsp; &nbsp; Watch Video &raquo;</a></p>
+					<div id="{entry_id}" style="display:none">
+						<div class="row">
+							{digital_video_iframe}
+						</div>
+					</div>
+				{/if}
+				
+			</div>
+		{/exp:channel:entries}
+	</div>
+</div>
+{/if}

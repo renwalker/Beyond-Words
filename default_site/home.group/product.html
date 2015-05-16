@@ -1,0 +1,989 @@
+<?
+	error_reporting(E_ALL ^ E_NOTICE);
+	$this->EE =& get_instance();
+
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('image_helper');
+	$this->EE->load->model('channel_images_model');
+
+	$this->EE->load->model('cartthrob_entries_model');
+	$this->EE->load->model('product_model');
+	$this->EE->load->helper('data_formatting');
+
+	/* GET THE ENTRY ID */
+    $productURLTitle = $this->EE->uri->segment(2);
+    $productSQL = "SELECT entry_id  FROM exp_channel_titles WHERE url_title =  '".$productURLTitle."'";
+    $productQuery = $this->EE->db->query($productSQL);
+    $productArray = $productQuery->result_array();
+    $productRow = $productArray[0];
+	$entry_id = $productRow['entry_id'];
+
+	$p = $this->EE->cartthrob->get_product($entry_id);
+	$productOptions = $p->item_options();
+	$productInfo = $this->EE->cartthrob_entries_model->entry($entry_id);
+
+	$availableIn = '';
+	$counter = 0;
+	foreach($productOptions['product_options'] as $key => $val)
+	{
+		$counter++;
+		if ($counter == 1)
+		{
+			$imageCategory = $val['option_name'];
+			$availabilityDate = $val['restock_date'];
+			switch(str_replace(' ', '', strtolower($val['status'])))
+			{
+				case "instock":
+					$availabilityMessage = '<p>Availability: In stock.<br/>Ships in 2-3 business days.</p>';
+					$actionButtonMessage = 'Add to Basket';
+					$hideOptions = 0;
+					break;
+				case "outofprint":
+					$availabilityMessage = '<p>Availability: Out of Print</p>';
+					$actionButtonMessage = '';
+					$hideOptions = 1;
+					break;
+				case "preorder":
+					$availabilityMessage = '<p>Availability: Coming Soon.<br/> '.(($availabilityDate)?'Coming soon date: '.$availabilityDate.'</p>':'');
+					$actionButtonMessage = 'Pre-order';
+					$hideOptions = 0;
+					break;
+				case "backorder":
+					$availabilityMessage = '<p>Availability: Backorder.<br/> '.(($availabilityDate)?'Coming soon date: '.$availabilityDate.'</p>':'');
+					$actionButtonMessage = 'Backorder';
+					$hideOptions = 0;
+					break;
+			}
+
+			$retailPrice = $val['retail_price'];
+			if ($val['isbn10'] != '')
+			{
+				$isbnNumber = $val['isbn10'];
+			}
+			else
+			{
+				$isbnNumber = $val['isbn13'];
+			}
+			$salesPrice = $val['sales_price'];
+			$originalPrice = $val['price'];
+
+			if (empty($val['sales_price'])){
+				$initialItemPrice = $val['price'];
+			}
+			else
+			{
+				$initialItemPrice = $val['sales_price'];
+				$initialCutoutPrice = $val['price'];
+			}
+
+			$delim = '';
+		}
+		else
+		{
+			$delim = ', ';
+		}
+
+		$availableIn .= $delim.$val['option_name'];
+		if ($counter != 1)
+		{
+			$otherFormats = ($counter - 1).' other '.(($counter-1 == 1)?'format':' formats');
+		}
+	}
+
+	switch(strtolower($productInfo["type"]))
+	{
+		case "book":
+			// Loop through book options
+				$type = "book";
+				$urlTitleSegment = 'books';
+				$hideLocalBookstoreLink = 0;
+				$hideLocalBookstoreLink = 0;
+				$productDetails = 'Available in: '.$availableIn;
+			break;
+		case "dvd":
+				$productDetails = '';
+				$urlTitleSegment = 'dvds';
+				$imageCategory = '';
+				$hideLocalBookstoreLink = 0;
+				$hideLocalBookstoreLink = 0;
+				$type = "dvd";
+			break;
+		case "gift":
+				$productDetails = '';
+				$urlTitleSegment = 'gifts';
+				$hideLocalBookstoreLink = 0;
+				$hideLocalBookstoreLink = 0;
+				$imageCategory = '';
+				$type = "gift";
+			break;
+		case "digital":
+				$productDetails = '';
+				$urlTitleSegment = 'gifts';
+				$hideLocalBookstoreLink = 1;
+				$hideAvailability = 1;
+				$imageCategory = '';
+				$type = "product";
+		case "video":
+				$productDetails = '';
+				$urlTitleSegment = 'gifts';
+				$hideLocalBookstoreLink = 1;
+				$hideAvailability = 1;
+				$imageCategory = '';
+				$type = "Video";
+
+			break;
+	}
+
+	@$imageDetails = $this->EE->channel_images_model->get_images($entry_id, 37);
+	$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+	$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+	$resizedImageFileName = $imageFileName.'__large'.$extension;
+	$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+	$mediumImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$imageFileName.'__grid'.$extension;
+	$publishedDate = $productInfo['publication_date'] ? date('F d, Y', $productInfo['publication_date']) : 0;
+
+	/* FEATURED AUTHORS */
+    $featuredAuthorsSQL = "select exp_channel_titles.entry_id as `author_entry_id`, exp_channel_titles.title as `author_title`, exp_channel_data.field_id_97 as `author_short_bio`, exp_channel_data.field_id_5 as `author_full_bio`, exp_channel_titles.url_title as `author_url_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$entry_id."' and (exp_playa_relationships.parent_field_id = 103 or exp_playa_relationships.parent_field_id = 104)";
+    $featuredAuthorsQuery = $this->EE->db->query($featuredAuthorsSQL);
+    $featuredAuthorsArray = $featuredAuthorsQuery->result_array();
+
+	/* FEATURED Illustrator */
+    $illustratorSQL = "select exp_channel_titles.entry_id as `illustrator_entry_id`, exp_channel_titles.title as `illustrator_title`, exp_channel_data.field_id_97 as `illustrator_short_bio`, exp_channel_data.field_id_5 as `illustrator_full_bio`, exp_channel_titles.url_title as `illustrator_url_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$entry_id."' and exp_playa_relationships.parent_field_id = 168";
+    $illustratorQuery = $this->EE->db->query($illustratorSQL);
+    $illustratorArray = $illustratorQuery->result_array();
+
+	/* FEATURED BLOG POST */
+    $featuredBlogSQL = "select exp_channel_titles.entry_id as `blog_entry_id`, exp_channel_titles.url_title as `blog_url_title`, exp_channel_titles.entry_date as `blog_date`, exp_channel_data.field_id_167 as `blog_intro`, exp_channel_data.field_id_6 as `blog_content`, exp_channel_titles.title as `blog_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.parent_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.parent_entry_id where exp_playa_relationships.parent_field_id = 7 and exp_channel_titles.entry_date < '".time()."' and exp_playa_relationships.child_entry_id = '".$entry_id."' limit 1";
+    $featuredBlogQuery = $this->EE->db->query($featuredBlogSQL);
+    $featuredBlogArray = $featuredBlogQuery->result_array();
+
+
+	$getRelatedBooksSQL = "select * from exp_category_posts left join exp_channel_titles on exp_channel_titles.entry_id = exp_category_posts.entry_id where exp_channel_titles.channel_id = 6 and cat_id in (select cat_id from exp_category_posts where exp_category_posts.entry_id = '".$entry_id."' and exp_category_posts.cat_id not in (70,73,71,69,67,68,66,65,34)) order by RAND() limit 4 " ;
+    $getRelatedBooksQuery = $this->EE->db->query($getRelatedBooksSQL);
+    $getRelatedBooksArray = $getRelatedBooksQuery->result_array();
+?>
+{if segment_2 == ''}
+	{redirect="/books"}
+{/if}
+{embed='includes/header'}
+<div class="row" id="product_page">
+
+
+<!--  ========================================================================== -->
+	<!-- # PRODUCT IMAGE / LEFT SIDE -->
+	<div class="three columns" id="product_image">
+
+	<!-- The image	 -->
+		<div class="product">
+			<div class="<?=$type;?>">
+				<a href="<?=$fullImageUrl;?>" class="fancybox"><img src="<?=$fullImageUrl;?>" width="217" alt="<?=$imageDetails[0]->title?>" /></a>
+				<?
+					if (count($imageDetails) > 1)
+					{
+						echo '<div class="twelve columns container">';
+							echo '<ul class="gallery_products">';
+							foreach($imageDetails as $keyImage => $valueImage)
+							{
+									$extension = substr($valueImage->filename, strrpos($valueImage->filename, '.'), strlen($valueImage->filename));
+									$imageFileName = str_replace($extension, '', $valueImage->filename);
+									$smallImageUrl = '/images/uploads/authors/'.$valueImage->entry_id.'/'.$imageFileName.'__tiny'.$extension;
+									$largeImageUrl = '/images/uploads/authors/'.$valueImage->entry_id.'/'.$imageFileName.'__large'.$extension;
+									echo '<li><a href="'.$largeImageUrl.'" class="fancybox" rel="gallery"><img src="'.$smallImageUrl .'" /></a></li>';
+							}
+							echo '</ul>';
+						echo '</div>';
+					}
+				?>
+			</div>
+		</div>
+
+		<!-- Image caption (if multiple images).  For books, this must change when the format is switched -->
+
+		<div class="product_caption product_specs">
+			<span class="serif">You are viewing:</span> <span class="book_type"><?=$imageCategory;?></span>
+			<!-- Product specs at a glance -->
+			<?=$productInfo['tech_specs'];?>
+		</div>
+	</div>
+<!--  ========================================================================== -->
+	<!-- # PRODUCT OVERVIEW -->
+	<div class="prod_middle columns product_overview">
+
+		<h1 class="title"><?php echo $productInfo["title"]; ?></h1>
+		<h2 class="title"><?php echo $productInfo["subtitle"]; ?></h2>
+		<h3 class="author"><?php if($type == "book") { /*echo "By ".$productRow["author1"];*/ } else if($type == "dvd" and $productRow["director"] != '') { echo "From ".$productRow["director"]; } else if($type == "gift") { echo "From "; }?>
+			<?
+				$authorCounter = 0;
+				foreach($featuredAuthorsArray as $authorListing)
+				{
+					$authorCounter++;
+					if ($authorCounter > 1 and count($featuredAuthorsArray) > 1){echo ' & ';}
+					echo $authorListing['author_title'];
+				}
+			?>
+			{exp:channel:entries channel="products"}
+					{exp:playa:children field="illustrator" entry_id="{entry_id}"}
+						<br />ILLUSTRATED BY: {title}
+					{/exp:playa:children}
+			{/exp:channel:entries}
+		</h3>
+
+		<!-- rating -->
+		<div class="product_rating clearfix">
+		{exp:channel:entries channel="products"}
+		{exp:rating:stats entry_id="{entry_id}" precision="0"}
+			<div class="rating current_rating">
+				<div class="{if overall_avg == 1}one_star{if:elseif overall_avg == 2}two_star{if:elseif overall_avg == 3}three_star{if:elseif overall_avg == 4}four_star{if:elseif overall_avg == 5}five_star{/if}"><!-- change to [one-five]_class for stars -->
+					<span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span>
+				</div>
+			</div>
+			<div class="rating_info">
+					( <a href="#" class="review_count">{overall_count}</a> )
+					<a href="#customer_reviews">Add your review</a>
+			</div>
+		{/exp:rating:stats}
+		{/exp:channel:entries}
+		</div>
+
+
+		<!-- Short intro description -->
+		<div class="serif_copy">
+			<?php echo $productInfo["description_intro"]; ?>
+		</div>
+
+		{exp:channel:entries channel="products" field="dvd_trailer_url"}
+			{if book_excerpt}
+				<a href="#excerpt" class="excerpt media_fancybox">Read Excerpt</a>
+				<div style="display:none; width: 90%; height: 80%;" id="excerpt">
+					<iframe src="http://docs.google.com/viewer?url={site_url}<?php echo urlencode('{book_excerpt}'); ?>&embedded=true" width="600" height="780" style="border: none;"></iframe>
+				</div>
+			{/if}
+				{if dvd_trailer_url}
+				<a href="{dvd_trailer_url}" class="trailer media_fancybox">
+					Watch Trailer
+				</a>
+			{/if}
+		{/exp:channel:entries}
+
+		<div class="product_details">
+
+			<ul>
+				<li>
+					<?php if($publishedDate): ?>
+						Published {exp:channel:entries channel="products" field="publisher"}{if publisher !=""}by {publisher} {/if}{/exp:channel:entries}on <?=$publishedDate;?>.
+					<?php endif; ?>
+					<?=$productDetails;?></li>
+				<p>
+					<?=$productInfo["roles"]?>
+				</p>
+				<div class="hidden_text">
+					<?=$productInfo["collapsed_details"]?>
+				</div>
+				<?
+					if ($productInfo['collapsed_details'] != '')
+					{
+						?>
+						<div class="hidden_text">
+							<?=$productInfo['collapsed_details'];?>
+						</div>
+						<a href="#" class="toggle_text">More details</a>
+						<?
+					}
+				?>
+			</ul>
+
+		</div>
+
+
+	</div>
+
+<!--  ========================================================================== -->
+	<!-- right side -->
+	<div class="right-side columns">
+
+		<!-- # ADD TO CART -->
+		<div class="add_to_cart">
+			<h2 class="heading"><span class="serif">Buy the</span> <?=strtoupper($type);?></h2>
+
+			<div class="product_page_cart">
+				<?
+					if ($hideAvailability == 0)
+					{
+					?>
+						<span class="productAvailability"><?=$availabilityMessage?></span>
+					<?
+					}		
+				?>
+				 <form action="" method="POST" class="custom">
+				 	<div class="format_wrap">
+						<input type="hidden" id="format_xid" name="format_xid" data-xid="{XID_HASH}" />
+				 		<select id="format" name="item_options['product_options']" data-xid="{XID_HASH}">
+                                <?
+									foreach($productOptions['product_options'] as $key => $val)
+									{
+										echo '<option value="'.$val['option_value'].'">'.$val['option_name'].'</option>';
+									}
+								?>
+				 		</select>
+				 	</div>
+
+				 	<div class="format_helper clearfix">
+						<?=$otherFormats?>
+                    </div>
+
+                    <div class="clear"></div>
+
+                     <div class="productPageOptions" style="<?=(($hideOptions)?'visibility:hidden':'')?>">
+	                     <div class="price">$<span class="productPricing"><?=money_format('%i', $initialItemPrice)?></span></div>
+
+						  <div class="sale_price">
+							<div <?=(($retailPrice != '' and $retailPrice != 0)?'':'style="display:none;"')?>>
+								Retail : <strike class="retailPrice">$<?=money_format('%i', $retailPrice)?></strike>
+							</div>
+							 <div <?=(($salesPrice != '' and $salesPrice != 0)?'':'style="display:none;"')?> class="sale_price_display">
+								Was :
+								<span class="originalPricing">$<?=money_format('%i', $originalPrice);?></span>
+							 </div>
+						  </div>
+	                     <div class="clear"></div>
+						<!--[if IE 8]><div class="hold_fix_btn"> <![endif]-->
+	                     <label for="quantity" class="quantity_label">Qty:</label>
+	                     <input type="text" class="quantity" id="quantity" name="quantity" value="1"/>
+						<!--[if IE 8]> </div> <![endif]-->
+	                     <div class="clear"></div>
+
+	                     <footer>
+							<a class="button_add" data-product="<?=$entry_id;?>" data-xid="{XID_HASH}"><span class="buttonActionMessage"><?=$actionButtonMessage?></span> $<span class="productPricingResult"><?=money_format('%i', $initialItemPrice)?></span></a>
+							<br /><br />
+								<?
+								if ($hideLocalBookstoreLink == 0)
+								{
+									?>
+									<div class="columns"><a href="#find_local_bookstore" class="modalBox">Find this product at a local bookstore</a></div>
+									<div style="display:none;">
+										<div id="find_local_bookstore">
+											<div class="bw_form">
+												<div class="row">
+													<h1>Find this product at a local bookstore</h1>
+													<p>
+														It looks like you were interested in this product: <b><?=$productInfo["title"];?> - <?=$imageCategory;?></b>
+													<p>
+												</div>
+												<form class="bw_form" id="find_at_local_bookstore" method="post">
+												<input type="hidden" name="xid_hash" value="{XID_HASH}" id="localBookstoreXID" />
+												<div class="container">
+													<div class="thankyoumessage" style="display:none;">
+														<h3>Thank you for contacting us. We will get back to you shortly.</h3>
+													</div>
+													<fieldset id="formFieldSet" class="row">
+														<div class="two columns">
+															<img src="<?=$mediumImageUrl?>" width="217">
+														</div>
+														<div class="ten columns">
+															<div class="row">
+																<div class="six columns">
+																	<label for="first_name">First Name <span class="form_error" id="first_name_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<input type="text" name="first_name" value="" id="first_name" maxlength="150">
+																</div>
+																<div class="six columns">
+																	<label for="last_name">Last Name <span class="form_error" id="last_name_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<input type="text" name="last_name" value="" id="last_name" maxlength="150">
+																</div>
+															</div>
+															<div class="row">
+																<div class="six columns">
+																	<label for="address_one">Address 1 (optional)</label>
+																	<input type="text" name="address_one" value="" id="address_one" maxlength="150">
+																</div>
+																<div class="six columns">
+																	<label for="address_two">Address 2 (optional)</label>
+																	<input type="text" name="address_two" value="" id="address_two" maxlength="150">
+																</div>
+															</div>
+															<div class="row">
+																<div class="four columns">
+																	<label for="city">City <span class="form_error" id="city_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<input type="text" name="city" value="" id="city" maxlength="150">
+																</div>
+																<div class="four columns">
+																	<label for="state_input">State <span class="form_error" id="state_input_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<input type="text" name="state_input" value="" id="state_input" maxlength="150">
+																</div>
+																<div class="four columns">
+																	<label for="zipcode">Zip <span class="form_error" id="zipcode_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<input type="text" name="zipcode" value="" id="zipcode" maxlength="150">
+																</div>
+															</div>
+															<div class="row">
+																<div class="six columns">
+																	<label for="email">Email <span class="form_error" id="email_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<input type="text" name="email" value="" id="email" maxlength="150">
+																</div>
+																<div class="six columns">
+																	<label for="phone">Phone <span class="form_error" id="phone_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<input type="text" name="phone" value="" id="phone" maxlength="150">
+																</div>
+															</div>
+															<div class="row">
+																<div class="twelve columns">
+																	<label for="comments">Comments <span class="form_error" id="comments_error" style="float:right; display:none;">Required</span><span>*</span></label>
+																	<textarea name="comments" value="" id="comments"></textarea>
+																</div>
+															</div>
+															<div class="row">
+																<div class="twelve columns">
+																	<button class="button_arrows_red find_at_local_bookstore_button" type="submit">Submit</button>
+																</div>
+															</div>
+														</div>
+													</div>
+													</fieldset>
+												</form>
+											</div>
+										</div>
+									</div><br />
+								<?
+								}		
+								?>
+									
+						</footer>
+                     </div>
+				 </form>
+			</div>
+		</div><!-- # /end cart -->
+
+		<div class="product_share">
+				<!-- AddThis Button BEGIN -->
+				<div class="addthis_toolbox addthis_default_style ">
+				<a class="addthis_button_facebook_like" fb:like:layout="button_count"></a>
+				<a class="addthis_button_tweet"></a>
+				<a class="addthis_button_pinterest_pinit" style="margin-left:-15px;"></a>
+				</div>
+				<script type="text/javascript" src="http://s7.addthis.com/js/300/addthis_widget.js#pubid=xa-50745c67693def9e"></script>
+				<!-- AddThis Button END -->
+
+				<?php
+    if($type == "book") {
+?>
+				<!--  GOODREADS.  Books only.  More info at http://www.goodreads.com/api/ -->
+				<div id="gr_add_to_books">
+					<div class="gr_custom_each_container_">
+						<a href="http://www.goodreads.com/book/isbn/<?=$isbnNumber?>" style="border:none" target="_blank">
+							<img alt="{TITLE}" src="http://www.goodreads.com/images/atmb_add_book-70x25.png" />
+						</a>
+					</div>
+				</div>
+				<!-- Pass in the ISBN as the identifier for the book.  In this example 158270225X is the ISBN -->
+				<script src="http://www.goodreads.com/book/add_to_books_widget_frame/<?=$isbnNumber?>?atmb_widget%5Bbutton%5D=atmb_widget_1.png&amp;atmb_widget%5Bhide_friends%5D=on" type="text/javascript"></script>
+				<!-- END GOODREADS -->
+<?php
+    }
+?>
+
+		</div>
+
+	</div>
+
+</div><!-- end top -->
+
+
+<!--  ========================================================================== -->
+	<!-- # STICKY NAV-->
+	<div class="row sticky_holder">
+		<div id="stickynav" class="clearfix">
+			<div class="twelve columns">
+				<span>Jump to:</span>
+
+					{exp:channel:entries channel="products"}
+					<a href="#product_description">Description</a>
+					{if media_gallery}<a href="#free_media">Free Media</a>{/if}
+					<a href="#product_author">Author</a>
+					{if press_reviews}<a href="#press_reviews">Press</a>{/if}
+					<a href="#customer_reviews">Reviews</a>
+					{/exp:channel:entries}
+			</div>
+		</div>
+	</div>
+
+
+
+
+<!-- bottom -->
+<div class="row" id="product_fulldetails">
+
+
+
+<!--  ========================================================================== -->
+	<!-- Item Description -->
+	<section id="product_description">
+		<div class="row">
+
+			<!-- Section title -->
+			<div class="three columns">
+				<h2 class="heading red"><span class="serif"><? if($type == "book") { ?>Book<? } else { ?>Product<? } ?></span> Description</h2>
+			</div>
+
+			<!-- Full description -->
+			<div class="{exp:channel:entries channel='products' field='series'}{if {exp:playa:total_children field='series'} > 0 }prod_middle{if:else}nine{/if}{/exp:channel:entries} columns">
+                    <?php echo $productInfo["product_description"]; ?>
+			</div>
+
+
+			<!-- Related books -->
+			{exp:channel:entries channel="products" field="series"}
+				{if {exp:playa:total_children field="series"} > 0 }
+				<aside class="three columns">
+					<h3 class="related"><span class="serif">More from</span> this series</h3>
+						<div class="aside_carousel_hold" id="carousel_hold">
+							<ul class="products aside_carousel_products" {if {exp:playa:total_children field="series"} > 2 } id="aside_carousel_loop"{/if}>
+									{series limit="10"}
+										<li>
+											<div class="product">
+													<a href="{site_url}product/{url_title}">
+													{exp:channel_images:images entry_id="{entry_id}" field="product_image" limit="1"}
+														<img src="{image:url:grid}" />
+													{/exp:channel_images:images}
+														<h4 class="title">{title}</h4>
+														{if  type== 'Gift'}<h5 class="format">{format}</h5>{/if}
+													</a>
+											</div>
+										</li>
+									{/series}
+							</ul><!-- end carousel -->
+				</aside>
+				{/if}
+			{/exp:channel:entries}
+			<!-- /end Related books -->
+
+		</div>
+
+		<div class="row related_items">
+			<div class="six columns offset-by-three tres_dots">
+				<div class="five columns">
+					<span class="green">You might also enjoy...</span>
+				</div>
+				<div class="seven columns">
+					<ul class="tiny_products">
+					<?
+						foreach($getRelatedBooksArray as $relatedKey => $relatedValue){
+							$imageDetails = $this->EE->channel_images_model->get_images($relatedValue['entry_id']);
+							$imagePath = '/images/uploads/authors/'.$relatedValue['entry_id'].'/';
+							$imageName = str_replace('.'.$imageDetails[0]->extension , '__tiny' , $imageDetails[0]->filename).'.'.$imageDetails[0]->extension;
+
+							echo '<li><a href="/product/'.$relatedValue['url_title'].'" style="background-image:url('.$imagePath.$imageName.')" class="has-tip tip-top" title="'.$relatedValue['title'].'"></a></li>';
+						}
+					?>
+					</ul>
+				</div>
+			</div>
+
+			<aside class="three columns tres_dots">
+				<h3 class="related"><span class="serif">Explore</span> Categories</h3>
+				<ul class="categories2">
+					{exp:channel:entries channel="products"}
+						{categories show="not 70|73|71|69|67|68|66|65|34"}
+							<li><a href="/<?=$urlTitleSegment?>/{category_url_title}">{category_name}</a></li>
+						{/categories}
+					{/exp:channel:entries}
+				</ul>
+			</aside>
+		</div>
+
+	</section>
+
+
+
+<!--  ========================================================================== -->
+	<!-- Free Media -->
+	{exp:channel:entries channel="products"}
+	{if media_gallery}
+
+	<section id="free_media">
+	<div class="row">
+			<!-- Section title -->
+			<div class="three columns">
+				<h2 class="heading red"><span class="serif">Free</span> Media</h2>
+			</div>
+
+			<div class="nine columns" >
+
+					<!-- Media gallery -->
+					<div id="media_gallery" class="tabs clearfix">
+						<div class="tab_nav">
+							<ul>
+								{media_gallery}
+									<li><a href="#TAB{row_id}" class="{if video_url !=''}video{if:elseif audio_url !=''}audio{if:elseif media_pdf !=''}pdf{if:elseif media_image !=''}picture{/if}">{media_title}</a></li>
+								{/media_gallery}
+							</ul>
+						</div>
+						<!-- Container -->
+						<div class="media_container">
+							{media_gallery}
+								<div id="TAB{row_id}" class="tab">
+									{if video_url !=''}
+										{video_url}
+									{if:elseif audio_url !=''}
+										{audio_url}
+									{if:elseif media_pdf !=''}
+									<div class="guide">
+										{media_pdf}
+										<a href="{url}" target="_blank">
+											{exp:channel_images:images entry_id='{entry_id}' limit='1'}
+												<img src="{image:url}" title="{title}" />
+											{/exp:channel_images:images}
+											<span>Download</span><br/>
+											<p><em>(
+											<?php
+												 $size ='{file_size}';
+												 $sizes = array(" Bytes", " KB", " MB", " GB", " TB", " PB", " EB", " ZB", " YB");
+											      if ($size == 0) { return('n/a'); }
+											      else {
+												     echo (round($size/pow(1000, ($i = floor(log($size, 1000)))), 1) . $sizes[$i]);
+												  }
+											?>
+											 )</em></p>
+										</a>
+										{/media_pdf}
+									</div>
+									{if:elseif media_image !=''}
+										<img src="{media_image}" />
+									{/if}
+								</div>
+							{/media_gallery}
+						</div>
+					</div><!-- end media gallery / tabs -->
+
+					<!-- More media (external links to media hosted elsewhere)-->
+					{if more_media}
+					<div class="more_media">
+						<h5 class="heading"><span class="serif">More</span> Media</h5>
+						<ul class="external_links clearfix">
+							{more_media}
+								<li><a href="{more_media_url}" target="_blank">{more_media_title}</a></li>
+							{/more_media}
+						</ul>
+					</div>
+					{/if}
+
+			</div><!-- end media nine col -->
+	</div>
+	</section>
+	{/if}
+{/exp:channel:entries}
+
+
+
+<!--  ========================================================================== -->
+	<!-- Meet the Author -->
+<?
+if (count($featuredAuthorsArray))
+{
+?>
+	<section id="product_author">
+	<div  class="row">
+		<!-- Section title -->
+		<div class="three columns">
+			<h2 class="heading red"><span class="serif">Meet the</span> Author<?=((count($featuredAuthorsArray)>1)?'s':'');?></h2><!-- change to Filmmaker, Artist -->
+		</div>
+		<div class="nine columns">
+<?
+	foreach($featuredAuthorsArray as $authorKey => $authorValue)
+	{
+
+		@$imageDetails = $this->EE->channel_images_model->get_images($authorValue['author_entry_id']);
+
+		$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+		$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+		$resizedImageFileName = $authorValue['author_entry_id'].'/'.$imageFileName.'__medium'.$extension;
+		$author_id = $authorValue['author_entry_id'];
+
+		$getRelatedEventsSQL = "select exp_channel_titles.entry_id as `entry_id`,exp_matrix_data.col_id_5 as `event_date`,exp_matrix_data.col_id_7 as `event_location`, exp_channel_titles.title as `entry_title`, exp_channel_titles.url_title as `entry_url_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.parent_entry_id left join exp_matrix_data on exp_matrix_data.entry_id = exp_channel_titles.entry_id where exp_playa_relationships.child_entry_id = '".$author_id."' and exp_playa_relationships.parent_field_id = '147' and exp_matrix_data.col_id_5 >= '".time()."'";
+
+		$getRelatedEventsQuery = $this->EE->db->query($getRelatedEventsSQL);
+		$getRelatedEventsArray = $getRelatedEventsQuery->result_array();
+		?>
+			<div class="row">
+				<!-- Author short bio -->
+				<div class="<?=((count($getRelatedEventsArray) > 0 || count($featuredAuthorsArray) > 1)?'nine':'twelve')?> columns">
+					<div class="eight columns collapse padding-right">
+						<!-- Truncate or pull from a short bio field -->
+						<p><?= $authorValue['author_full_bio'] ?></p>
+					</div>
+					<!-- Author image -->
+					<div class="four columns text-right">
+						<a href="/authors/<?=$authorValue['author_url_title']?>">
+							<img src="{site_url}images/uploads/authors/<?=$resizedImageFileName;?>" title="<?=$authorValue['author_title']?>" class="author_image" />
+						</a>
+					</div>
+				</div>
+
+				<!-- Upcoming events -->
+				<?
+				if (count($getRelatedEventsArray) > 0)
+				{
+				?>
+				<aside class="three columns">
+					<h3 class="related"><span class="serif">Upcoming</span><br/>Author Events</h3>
+						<ul class="event_list" id="event_carousel">
+							<?
+								foreach($getRelatedEventsArray as $relatedEventKey => $relatedEventVal)
+								{
+									$locationArray = json_decode($relatedEventVal['event_location']);
+									echo '<li><a href="/events/'.$relatedEventVal['entry_url_title'].'"><span>'.date('F d, Y', $relatedEventVal['event_date']).'</span><br/>'.$locationArray->city.', '.$locationArray->region.'</a></li>';
+								}
+							?>
+						</ul>
+				</aside>
+				<?
+				}else if(count($featuredAuthorsArray) > 1){
+
+					echo '<aside class="three columns">&nbsp;</aside>';
+				}
+				?>
+			</div>
+		<?
+	}
+?>
+		</div>
+	</div>
+	</section>
+<?
+}
+?>
+
+<!--  ========================================================================== -->
+	<!-- Meet the Illustrator -->
+
+<?
+if (count($illustratorArray))
+{
+?>
+	<section id="product_author">
+	<div  class="row">
+		<!-- Section title -->
+		<div class="three columns">
+			<h2 class="heading red"><span class="serif">Meet the</span> Illustrator</h2>
+		</div>
+		<div class="nine columns">
+<?
+
+	foreach($illustratorArray as $illustratorKey => $illustratorValue)
+	{
+
+		@$imageDetails = $this->EE->channel_images_model->get_images($illustratorValue['illustrator_entry_id']);
+
+		$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+		$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+		$resizedImageFileName = $illustratorValue['illustrator_entry_id'].'/'.$imageFileName.'__medium'.$extension;
+		?>
+			<div class="row">
+				<!-- Author short bio -->
+				<div class="twelve columns">
+					<div class="nine columns collapse">
+						<!-- Truncate or pull from a short bio field -->
+						<p>
+							<strong><?=$illustratorValue['illustrator_title']?></strong>
+							<p>
+								<?=(($illustratorValue['illustrator_short_bio'] == '')?substr( preg_replace('/\s\s+/', '', $illustratorValue['illustrator_full_bio']),0, strpos(preg_replace('/\s\s+/', '', $illustratorValue['illustrator_full_bio']), "</p>")+4):$illustratorValue['illustrator_short_bio']);?>
+							</p>
+
+						</p>
+						<!-- On-site links -->
+						<ul class="link_list">
+							<li><a href="/authors/<?=$illustratorValue['illustrator_url_title']?>">Read full bio</a></li>
+							<li><a href="/authors/<?=$illustratorValue['illustrator_url_title']?>#author_works">All titles by <?=$illustratorValue['illustrator_title']?></a></li>
+						</ul>
+					</div>
+					<!-- Author image -->
+					<div class="three columns">
+						<a href="/authors/<?=$illustratorValue['illustrator_url_title']?>" class="author_image" >
+							<img src="{site_url}images/uploads/authors/<?=$resizedImageFileName;?>" title="<?=$illustratorValue['illustrator_title']?>" />
+						</a>
+					</div>
+				</div>
+
+				<!-- Upcoming events -->
+			</div>
+		<?
+	}
+?>
+		</div>
+	</div>
+	</section>
+<?
+}
+?>
+
+
+<!--  ========================================================================== -->
+	<!-- Press -->
+{exp:channel:entries channel="products"}
+{if press_reviews}
+	<section id="press_reviews">
+	<div class="row">
+		<div class="three columns">
+			<h2 class="heading red"><span class="serif">Press</span> Reviews</h2>
+		</div>
+		<div class="{if more_press_reviews != ''}six{if:else}nine{/if} columns">
+			{press_reviews}
+				<article class="press_quote">
+					<p>&ldquo;{press_review}&rdquo;</p>
+					<h5>{press_author}</h5>
+					<h6>{press_author_byline}</h6>
+				</article>
+
+				{if row_count == 2 && total_rows > 2}
+					<div class="hidden_text2">
+				{/if}
+				{if row_count == total_rows && row_count > 2}
+					</div>
+					<a href="#" class="toggle_text2">More reviews</a>
+				{/if}
+			{/press_reviews}
+		</div>
+
+		{if more_press_reviews != ""}
+		<aside class="three columns">
+			<h3 class="related"><span class="serif">More</span> Press Reviews</h3>
+			<ul class="external_links">
+				{more_press_reviews}
+					<li><a href="{more_press_url}" target="_blank"><em>{more_press_title}</em>{if more_press_publication}&nbsp;(&nbsp;{more_press_publication}{if more_press_date},&nbsp;{more_press_date format="M 'y"}{/if}&nbsp;){/if}</a></li>
+				{/more_press_reviews}
+			</ul>
+		</aside>
+		{/if}
+
+	</div>
+	</section>
+{/if}
+{/exp:channel:entries}
+
+<!--  ========================================================================== -->
+
+	<!-- Reviews -->
+	<section id="customer_reviews">
+	<div class="row">
+		<div class="three columns">
+			<h2 class="heading red"><span class="serif"><? if($type == "book") { ?>Reader<? } else { ?>Product<? } ?></span> Reviews</h2>
+		</div>
+		<div class="six columns">
+			{embed="includes/product_ratings" entry_id="<?php echo $entry_id  ?>"}
+<?
+	if ($type == 'book')
+	{
+?>
+
+           <? // https://www.goodreads.com/book/isbn?format=xml&isbn=9781582704685&key=bVoNNF2NE0cBH6gXUdxg&secret=fBEmy3wCt84JKQuGfCjPygXi05IwMcHI8PIZqN1wU ?>
+			  <style>
+		  #goodreads-widget {
+			font-family: georgia, serif;
+			padding: 18px 0;
+			width:500px;
+		  }
+		  #goodreads-widget h1 {
+			font-weight:normal;
+			font-size: 16px;
+			border-bottom: 1px solid #BBB596;
+			margin-bottom: 0;
+		  }
+		  #goodreads-widget a {
+			text-decoration: none;
+			color:#660;
+		  }
+		  iframe{
+			background-color: #ffffff;
+		  }
+		  #goodreads-widget a:hover { text-decoration: underline; }
+		  #goodreads-widget a:active {
+			color:#660;
+		  }
+		  #gr_footer {
+			width: 100%;
+			border-top: 1px solid #BBB596;
+			text-align: right;
+		  }
+		  #goodreads-widget .gr_branding{
+			color: #382110;
+			font-size: 11px;
+			text-decoration: none;
+			font-family: verdana, arial, helvetica, sans-serif;
+		  }
+		</style>
+		<div id="goodreads-widget">
+		  <div id="gr_header"><h1 class="title">Goodreads reviews for <?php echo $productInfo["title"]; ?></h1></div>
+		  <iframe id="the_iframe" src="http://www.goodreads.com/api/reviews_widget_iframe?did=tiktsfoH1yxsrDdQFVOg&format=html&header_text=Goodreads+reviews+for+The+Adventures+of+Huckleberry+Finn&isbn=<?=$isbnNumber?>&links=660&min_rating=&num_reviews=&review_back=ffffff&stars=000000&stylesheet=&text=444" width="500" height="400" frameborder="0"></iframe>
+		</div>
+<?
+	}
+?>
+			
+		</div>
+		<aside class="three columns">
+			<div class="write_review">
+			{exp:rating:form required="review|rating" status="closed" return="product/{segment_2}"}
+				<h2 class="note">Tell us what you think!</h2>
+				<div class="tres_dots"></div>
+				<form action="" method="post" id="review_form">
+				<input type="hidden" name="XID" value="{XID_HASH}" /> 
+					<label>*How would you rate this title?</label>
+					<!-- rating -->
+					<div class="rating">
+						<div class="rate_it">
+							<span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span>
+						</div>
+					</div>
+					<input type="hidden" name="rating" id="rating_field" value="" />
+					<input type="text" name="name" id="name" value="{if logged_in}{screen_name}{/if}" placeholder="Your nickname" />
+					{if logged_out}
+					<input type="text" name="email" id="email" value="" placeholder="*Your email" />
+					{/if}
+					<input type="text" name="review_title" id="review_title" placeholder="Title of your Review" />
+					<textarea cols="70" rows="5" name="review" id="review" placeholder="*Your review..."></textarea>
+					<button type="submit" onclick="_gaq.push(['_trackEvent','{exp:ad_helper:full_segments}', 'Submit', 'Submit Review: {exp:channel:entries channel="products" limit="1"}{title}{/exp:channel:entries}']);" class="button_arrows_white">Submit review</button>
+				</form>
+			{/exp:rating:form}
+			</div>
+			<div>
+			</div>
+		</aside>
+	</div>
+	</section>
+
+
+</div><!-- end item full details -->
+
+<?
+	if (count($featuredBlogArray))
+	{
+		?>
+		<div class="row">
+			<!--  ========================================================================== -->
+			<!-- # Blog Box -->
+			<section class="blog_box">
+				<div class="box_header">
+					<h2 class="heading"><span class="serif white">From the</span> Beyond Words <span class="serif">Blog</span></h2>
+				</div>
+				<div class="blog_box_content row">
+					<div class="two columns" style="width:130px;">
+						<a href="/blog/<?=$featuredBlogArray[0]['blog_url_title']?>" class="post_date"><span><?=date('M', $featuredBlogArray[0]['blog_date'])?></span><br/><?=date('d', $featuredBlogArray[0]['blog_date'])?></a>
+					</div>
+					<div class="ten columns" style="float:left;">
+						<h3 class="heading"><a href="/blog/<?=$featuredBlogArray[0]['blog_url_title']?>"><?=$featuredBlogArray[0]['blog_title']?></a></h3>
+						<p>
+							<?=(($featuredBlogArray[0]['blog_intro'] != '')?$featuredBlogArray[0]['blog_intro']:substr(strip_tags($featuredBlogArray[0]['blog_content']) , 0, 455).'...')?>
+						</p>
+
+						<a href="/blog/<?=$featuredBlogArray[0]['blog_url_title']?>">Read on...</a>
+					</div>
+				</div>
+			</section><!-- end blog box -->
+		</div>
+<?
+	}
+?>
+
+
+{embed='includes/footer'}

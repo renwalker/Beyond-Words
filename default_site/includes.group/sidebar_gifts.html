@@ -1,0 +1,29 @@
+<!-- SIDEBAR -->
+<aside  class="two columns" id="sidebar">
+
+	<h4><span class="serif">Top</span> Picks</h4>
+	<ul>
+		<li><a href="{site_url}gifts/top-sellers">Top Sellers</a></li>
+		<li><a href="{site_url}gifts/staff-picks">Staff Picks</a></li>
+		<li><a href="{site_url}gifts/new">What's New</a></li>
+		<li><a href="{site_url}gifts/on-sale">On Sale</a></li>
+    </ul>
+
+	<h4><span class="serif">Gifts</span>&nbsp;by Category</h4>
+
+	<ul>
+
+		{exp:channel:categories channel="products" style="linear" show_empty="no" dynamic="no"}
+
+			{if parent_id == '58'}
+				<li><a href="{site_url}gifts/{category_url_title}">{category_name}</a></li>
+			{/if}
+
+
+    	{/exp:channel:categories}
+    </ul>
+
+{embed='contact/newsletter_sidebar'}
+
+
+</aside><!-- end sidebar -->

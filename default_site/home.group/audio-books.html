@@ -1,0 +1,442 @@
+<?
+	error_reporting(E_ALL);
+	$this->EE =& get_instance();
+
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+	$this->EE->load->model('product_model');
+
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('image_helper');
+	$this->EE->load->model('channel_images_model');
+
+	/* Get Entry id */
+    $productURLTitle = $this->EE->uri->segment(1);
+    $productSQL = "SELECT entry_id  FROM exp_channel_titles WHERE url_title =  '".$productURLTitle."'";
+    $productQuery = $this->EE->db->query($productSQL);
+    $productArray = $productQuery->result_array();
+    $productRow = $productArray[0];
+	$entry_id = $productRow['entry_id'];
+	
+	$featuredProductField = '119';
+	$featuredAuthorField = '120';
+	$featuredVerbiage = 'Author';
+	$type = ' Book';
+
+	/* FEATURED BLOG POST */
+    $featuredBlogSQL = "select exp_channel_titles.entry_id as `blog_entry_id`, exp_channel_titles.url_title as `blog_url_title`, exp_channel_titles.entry_date as `blog_date`, exp_channel_data.field_id_167 as `blog_intro`, exp_channel_data.field_id_6 as `blog_content`, exp_channel_titles.title as `blog_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_field_id = 121 and exp_playa_relationships.parent_entry_id = '".$entry_id."' limit 1";
+    $featuredBlogQuery = $this->EE->db->query($featuredBlogSQL);
+    $featuredBlogArray = $featuredBlogQuery->result_array();
+
+	/* FEATURED PRODUCT */
+    $featuredProductSQL = "select exp_channel_data.field_id_163 as `dvd_trailer_url` ,exp_channel_titles.title as `product_title`,exp_channel_data.field_id_151 as `product_options`,exp_channel_titles.entry_id as `product_id` ,exp_channel_data.field_id_118 as `product_description`, exp_channel_titles.url_title as `product_url_title`  from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_field_id = '".$featuredProductField."' and exp_playa_relationships.parent_entry_id = '".$entry_id."' limit 1";
+    $featuredProductQuery = $this->EE->db->query($featuredProductSQL);
+    $featuredProductArray = $featuredProductQuery->result_array();
+
+	@$imageDetails = $this->EE->channel_images_model->get_images($featuredProductArray[0]['product_id']);
+	$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+	$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+	$resizedImageFileName = $imageFileName.'__grid'.$extension;
+	$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+
+	/* FEATURED PRODUCT CATEGORIES*/
+	$featuredProductCategoriesSQL = 'select * from exp_category_posts left join exp_categories on exp_categories.cat_id = exp_category_posts.cat_id where exp_category_posts.entry_id = "'.$featuredProductArray[0]['product_id'].'" and exp_categories.cat_id != 34';
+	$featuredProductCategoriesQuery = $this->EE->db->query($featuredProductCategoriesSQL);
+	$featuredProductCategoriesArray = $featuredProductCategoriesQuery->result_array();
+
+
+	/* FEATURED AUTHOR*/
+    $featuredAuthorSQL = "select exp_channel_data.field_id_97 as `author_short_bio`, exp_channel_data.field_id_5 as `author_full_bio`, exp_channel_titles.title as `author_title`,exp_channel_titles.entry_id as `author_id` ,exp_channel_titles.url_title as `author_url_title`  from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_field_id = '".$featuredAuthorField."' and exp_playa_relationships.parent_entry_id = '".$entry_id."' limit 1";
+    $featuredAuthorQuery = $this->EE->db->query($featuredAuthorSQL);
+    $featuredAuthorArray = $featuredAuthorQuery->result_array();
+
+	@$imageDetails = $this->EE->channel_images_model->get_images($featuredAuthorArray[0]['author_id']);
+	$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+	$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+	$resizedImageFileName = $imageFileName.'__medium'.$extension;
+	$fullImageUrlAuthor = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+		
+		/* RANDOM AUTHOR BOOK */
+		$getAuthorBookIDSQL = 'select exp_channel_data.field_id_118 as `product_description`, exp_channel_titles.title as `product_title`,exp_channel_titles.url_title as `product_url_title`, exp_channel_titles.entry_id as `product_id` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.parent_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_channel_titles.entry_id where exp_playa_relationships.child_entry_id = "'.$featuredAuthorArray[0]['author_id'].'" and (exp_playa_relationships.parent_field_id = 103 or exp_playa_relationships.parent_field_id = 104) order by RAND() limit 1';
+		$getAuthorBookIDQuery = $this->EE->db->query($getAuthorBookIDSQL);
+		$getAuthorBookIDArray = $getAuthorBookIDQuery->result_array();
+	
+		@$imageDetails = $this->EE->channel_images_model->get_images($getAuthorBookIDArray[0]['product_id']);
+		$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+		$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+		$resizedImageFileName = $imageFileName.'__tiny'.$extension;
+		$fullImageUrlAuthorBook = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+
+	/* RETRIEVE ALL AUDIO BOOKS */
+
+	$sqlRetrieveAudioBooks = "select * from exp_channel_data left join exp_channel_titles on exp_channel_titles.entry_id = exp_channel_data.entry_id where exp_channel_data.channel_id = 6 order by exp_channel_data.field_id_173";
+	$queryRetrieveAudioBooks = $this->EE->db->query($sqlRetrieveAudioBooks);
+	$arrayRetrieveAudioBooks = $queryRetrieveAudioBooks->result_array();
+
+	foreach($arrayRetrieveAudioBooks as $keyAudio => $valAudio)
+	{
+		$product_options = unserialize(base64_decode($valAudio['field_id_151']));
+		foreach($product_options as  $optionKey => $optionVal)
+		{
+			if (strtolower(str_replace(' ', '' ,$optionVal['option_name'])) == 'audiobook')
+			{
+				$productsAudio[$keyAudio] = $valAudio;
+				$productsAudio[$keyAudio]['product_options'] = $product_options;
+
+				$getFeaturedAuthorsSQL = "select exp_channel_titles.title from exp_playa_relationships left join exp_channel_titles on exp_playa_relationships.child_entry_id = exp_channel_titles.entry_id  where (exp_playa_relationships.parent_field_id = 103 or exp_playa_relationships.parent_field_id = 104) and exp_playa_relationships.parent_entry_id = '".$valAudio['entry_id']."'";
+				$getFeaturedAuthorsQuery = $this->EE->db->query($getFeaturedAuthorsSQL);
+				$getFeaturedAuthorsArray = $getFeaturedAuthorsQuery->result_array();
+				$productsAudio[$keyAudio]['authors_array'] = $getFeaturedAuthorsArray;
+			}
+		}
+	}
+?>
+{embed='includes/header'}
+
+{embed="includes/breadcrumbs_store"}
+
+<div role="main" class="row" id="main_body">
+	{embed="includes/sidebar_books"}
+<div class="ten columns main-content">
+	{if last_segment_category_id != "73" && last_segment_category_id != "71" && last_segment_category_id != "69" && last_segment_category_id != "67" && last_segment_category_id != "68" && last_segment_category_id != "66" && last_segment_category_id != "65"}
+<?
+	if (count($featuredProductArray) != 0)
+	{
+	?>
+		<!-- # Featured Box -->
+		<section class="featured">
+			<div class="box_header">
+
+				{exp:channel:entries channel="category_pages" category="{last_segment_category_id}"}
+					<h2 class="heading {if {last_segment_category_id} == '35'} long_title {/if}"><span class="serif">{title}</span> Featured <?=$type?></h2>
+					<div class="note widow">
+						{category_custom_note}
+					</div>
+				{/exp:channel:entries}
+
+			</div>
+			<div class="featured_content waves row collapse">
+				<!-- the product image -->
+				<div class="three columns">
+					<div class="product">
+						<div class="<?=strtolower($type);?>"><a href="/product/<?=$featuredProductArray[0]['product_url_title']?>"><img src="<?=$fullImageUrl;?>" alt="{image:title}" /></a></div>
+					</div>
+				</div>
+				<!-- the product details  -->
+				<div class="nine columns">
+					<h2 class="title"><a href="{site_url}product/<?=$featuredProductArray[0]['product_url_title']?>"><?=$featuredProductArray[0]['product_title']?></a></h2>
+					<p><?=$featuredProductArray[0]['product_description']?></p>
+					<?
+						if($featuredProductArray[0]['dvd_trailer_url'])
+						{
+							echo '<a href="'.$featuredProductArray[0]['dvd_trailer_url'].'" class="trailer media_fancybox">Watch Trailer</a>';
+						}
+					?>
+
+					<!-- bottom content -->
+					<div class="featured_bottom clearfix">
+						<div class="six columns collapse">
+							<?
+								if (count($featuredProductCategoriesArray) != 0)
+								{
+									echo 'Discover more like this from:';
+									echo '<ul class="categories">';
+										foreach($featuredProductCategoriesArray as $catKey => $catVal)
+										{
+											echo '<li><a href="/{segment_1}/'.$catVal['cat_url_title'].'">'.$catVal['cat_name'].'</a></li>';
+										}
+									echo '</ul>';
+								}
+							?>
+						</div>
+
+						<div class="right-side columns">
+							<?
+							$product_options = unserialize(base64_decode($featuredProductArray[0]['product_options']));
+
+								if (count($product_options) != 0)
+								{
+									foreach($product_options as $productOptionKey => $productOptionVal)
+									{
+										if ($productOptionVal['sales_price'] == '')
+										{
+											$priceDisplay = money_format('%i', $productOptionVal['price']);
+										}
+										else
+										{
+											$priceDisplay = money_format('%i', $productOptionVal['sales_price']);
+										}
+										echo '<a href="#ADD" class="button_add category_add" data-xid="{XID_HASH}"  data-product="'.$featuredProductArray[0]['product_id'].'" data-format="'.$productOptionVal['option_value'].'">'.$productOptionVal['option_name'].' $'.$priceDisplay.'</a>';
+									}
+								}
+							?>
+							
+						</div>
+					</div><!-- end featured_bottom -->
+				</div><!-- end nine col -->
+			</div><!-- end featured_content -->
+		</section><!-- end featured -->
+	<?
+	}	
+?>
+
+<?
+
+
+if (count($featuredAuthorArray) != 0)
+{
+?>
+	<!--  ========================================================================== -->
+		<!-- # Featured Author -->
+
+			<section class="featured_author border-heavy">
+			<div class="row">
+				<div class="twelve columns collapse">
+					{exp:channel:entries channel="category_pages" limit="1" category="{last_segment_category_id}"}
+						<h2 class="section_title"><span class="serif">{title}</span> Featured Author: <?=$featuredAuthorArray[0]['author_title']?></h2>
+					{/exp:channel:entries}
+
+				</div>
+
+						<div class="nine columns collapse">
+							<!-- short bio -->
+									<p class="serif_copy">
+										<?
+											if ($featuredAuthorArray[0]['author_short_bio'] == '')
+											{
+												echo $featuredAuthorArray[0]['author_full_bio'];
+											}
+											else
+											{
+												echo $featuredAuthorArray[0]['author_short_bio'];
+											}
+										?>
+									</p>
+									<br/>
+
+							<!-- book by author -->
+
+							<!-- about book + links -->
+							<div class="four-fifths columns">
+								<div class="two columns">
+									<img src="<?=$fullImageUrlAuthorBook?>" />
+								</div>
+								<div class="ten columns">
+									<p><a class="intro" href="/product"><?=$getAuthorBookIDArray[0]['product_title']?></a><br/><?=strip_tags($getAuthorBookIDArray[0]['product_description'])?></p>
+									<ul class="link_list">
+										<li><a href="/authors/<?=$featuredAuthorArray[0]['author_url_title']?>#author_works">View All Books from <?=$featuredAuthorArray[0]['author_title']?></a></li>
+									</ul>
+								</div>
+							</div>
+						</div> <!-- / nine col end -->
+						<!-- author pic -->
+						<div class="three columns">
+							<a href="/authors/<?=$featuredAuthorArray[0]['author_url_title']?>" class="author_image" >
+								<?
+									echo '<img src="'.$fullImageUrlAuthor.'" />';
+								?>
+							</a>
+						</div>
+				</div>
+			</section>
+
+	
+		<!-- end featured author -->
+		<?
+		}	
+	?>
+
+{/if}
+
+	<!-- # Product list view -->
+		<section class="product_list">
+			<!-- Entries ordered by title -->
+			<?/*
+			<div class="sort row">
+				<div class="five columns">
+					<form action="" method="post" class="custom">
+					<label>Sort by</label>
+						<select id="sort-drop" name="sort-drop">
+							<option>Title</option>
+							<option>Best Selling</option>
+							<option>Top Rated</option>
+							<option>Price (Lowest to Highest)</option>
+							<option>Price (Highest to Lowest)</option>
+						</select>
+					</form>
+				</div>
+				<div class="five columns">
+					<!-- PAGINATION -->
+				</div>
+			</div>
+			*/?>
+	<div class="row">
+		<?
+			foreach($productsAudio as $audioProductKey => $audioProductVal)
+			{
+		?>
+			<div class="list_item row">
+					<!-- product image -->
+					<div class="one-fifths columns">
+						<div class="product">
+							<a href="{site_url}product/<?=$audioProductVal['url_title']?>">
+								<div class="{if  type== 'Book'}book{if:elseif  type== 'DVD'}dvd{if:else}gift{/if}">
+									<?
+										@$imageDetails = $this->EE->channel_images_model->get_images($audioProductVal['entry_id']);
+										$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+										$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+										$resizedImageFileName = $imageFileName.'__grid'.$extension;
+										$fullImageUrlBook = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+									?>
+										<img src="<?=$fullImageUrlBook;?>" width="154"/>
+								</div>
+							</a>
+						</div>
+					</div>
+					<!-- product details -->
+					<div class="four-fifths columns collapse" >
+						<div class="nine columns clearfix">
+							<!-- title and author -->
+							<h3 class="title"><a href="{site_url}product/<?=$audioProductVal['url_title']?>"><?=$audioProductVal['title']?></a></h3>
+							<?
+								$counter = 0;
+								echo '<h5 class="author">';
+								foreach($audioProductVal['authors_array'] as $audioAuthorKey => $audioAuthorVal)	
+								{
+									$counter++;
+									echo $audioAuthorVal['title'];
+									if (count($audioProductVal['authors_array']) > 1)
+									{
+										echo ' and ';
+									}
+								}
+								echo '</h5>';
+							/*
+							{exp:playa:children field="author_1"}
+								<h5 class="author">{title}</h5>
+							{/exp:playa:children}
+
+							{if author_2 != ""}
+								{exp:playa:children field="author_2"}
+									<h5 class="author">and {title}</h5>
+								{/exp:playa:children}
+							{/if}
+							*/?>
+
+						</div>
+						<div class="seven columns">
+							<!-- tags -->
+
+							<div class="tag_wrap">
+								<!--{categories}
+									{if category_id == 69}
+										<span class="tag new">New</span>
+									{if:elseif category_id == 67}
+										<span class="tag coming_soon">Coming Soon</span>
+									{if:elseif category_id == 66}
+										<span class="tag staff_pick">Staff Pick</span>
+									{if:elseif category_id == 68}
+										<span class="tag sale">Sale</span>
+									{/if}
+								{/categories}
+								-->
+							</div>
+
+							<!-- add additional spans for coming_soon, staff_picks, sale if applicable-->
+
+
+							<!-- rating -->
+							<?/*
+							
+							<div class="rating current_rating">
+
+								<div class="four_star"><!-- change to [one-five]_class for stars -->
+
+									<span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span>
+
+								</div>
+
+							</div>
+							
+							*/?>
+
+							<!-- description -->
+							<?
+								if ($audioProductVal['field_id_118'] == "")	
+								{
+									echo substr($audioProductVal['field_id_26'], 0, 300).'&hellip;';
+								}
+								else
+								{
+									echo strip_tags($audioProductVal['field_id_118']);
+								}
+							?>
+							<div><a href="{site_url}product/{url_title}">More details</a></div>
+						</div>
+						<div class="right-side columns">
+						<?
+							foreach($audioProductVal['product_options'] as $audioProductOptionKey => $audioProductOptionValue)
+							{
+								if ($audioProductOptionValue['sales_price'] != '')
+								{
+									$priceDisplay = $audioProductOptionValue['sales_price'];
+								}
+								else
+								{
+									$priceDisplay = $audioProductOptionValue['price'];
+								}
+								echo  '<a href="#ADD" class="button_add category_add" data-xid="{XID_HASH}" data-product="'.$audioProductVal['entry_id'].'" data-format="'.$audioProductOptionValue['option_value'].'">'.$audioProductOptionValue['option_name'].' $'.money_format('%i', $priceDisplay).'</a><!-- multiple formats only apply to books -->';
+							}
+						?>
+						</div>
+					</div>
+			</div><!-- end list_item row / single product -->
+			<?
+			}	
+			?>
+
+			</div>
+		</section>
+
+	<!--  ========================================================================== -->
+<?
+	if (isset($featuredBlogArray) and count($featuredBlogArray))
+	{
+		?>
+		<!-- # Blog Box -->
+		<section class="blog_box">
+			<div class="box_header">
+				<h2 class="heading"><span class="serif white">From the</span> Beyond Words <span class="serif">Blog</span></h2>
+			</div>
+			<div class="blog_box_content row">
+				<div class="two columns" style="width:130px;">
+					<a href="/blog/<?=$featuredBlogArray[0]['blog_url_title']?>" class="post_date"><span><?=date('M', $featuredBlogArray[0]['blog_date'])?></span><br/><?=date('d', $featuredBlogArray[0]['blog_date'])?></a>
+				</div>
+				<div class="ten columns" style="float:left;">
+					<h3 class="heading"><a href="/blog/<?=$featuredBlogArray[0]['blog_url_title']?>"><?=$featuredBlogArray[0]['blog_title']?></a></h3>
+					<p>
+						<?
+							if ($featuredBlogArray[0]['blog_intro'] != '')
+							{
+								echo $featuredBlogArray[0]['blog_intro'];
+							}
+							else
+							{
+								$explodedBlogContent = explode('.', strip_tags($featuredBlogArray[0]['blog_content']));
+								echo $explodedBlogContent[0].'.';
+							}
+						?>
+					</p>
+
+					<a href="/blog/<?=$featuredBlogArray[0]['blog_url_title']?>">Read on...</a>
+				</div>
+			</div>
+		</section><!-- end blog box -->
+		<?
+	}
+?>
+	</div>
+</div>
+</div>
+<!--  ========================================================================== -->
+{embed='includes/footer'}

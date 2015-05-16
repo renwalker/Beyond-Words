@@ -1,0 +1,25 @@
+<h3>Newsletter</h3>
+<div id="newsletter_message_target">
+	{!-- only for the off chance that js is turned off. Otherwise handled by /templates/js/ajax-methods.js and /templates/default_site/contact.group/newsletter_handler.html --}
+	<?php 
+
+	    include_once './templates/default_site/contact.group/newsletter_handler.php'; 
+	    $form_result = handle_newsletter('footer_newsletter');
+
+	    echo $form_result['message'];
+
+	?>
+</div>
+<form class="footer_newsletter_wrapper waves newsletter_ajax_form" action="" method="POST" data-message-target="#newsletter_message_target">
+	<input type="hidden" name="XID" value="{XID_HASH}" />
+	<input type="hidden" name="form_name" value="footer_newsletter"/>
+	<p>First looks &amp; exclusive discounts straight to your inbox.</p>
+	<div class="<?php 
+        if(isset($form_result['inline_errors']['email_address'])) {
+
+            echo $form_result['inline_errors']['email_address'];
+
+        } ?>"><input type="text" class="footer_newsletter" id="newsletter-email-foot" name="email_address" placeholder="Enter your email"/></div>
+	<button type="submit" onclick="_gaq.push(['_trackEvent','{exp:ad_helper:full_segments}', 'Submit', 'Newsletter Sign Up']);" class="button_single_red"/>Submit</button><br/>
+	<div class="corner c_footer"></div>
+</form>

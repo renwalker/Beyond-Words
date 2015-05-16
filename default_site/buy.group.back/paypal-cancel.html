@@ -1,0 +1,34 @@
+<?php
+
+/* paypal-cancel
+	
+	What to do here....
+	- show link to try again with paypal
+	- ? go back to cart - checkout with CC?
+	- send email with link to complete purchase
+*/
+
+@session_start();
+require_once PATH_THIRD . 'ad_paypal/ad_paypal_lib.php';
+$settings = Ad_paypal_lib::$config;
+
+/*
+$orderInfo = unserialize(base64_decode($_SESSION['order_info']));
+unset($_SESSION['order_info']);
+
+$preapprovalKey = $_SESSION['preapprovalKey'];
+unset($_SESSION['preapprovalKey']);
+*/
+
+$url = $settings['preapproval_redirect_url'] . $_SESSION['preapprovalKey'];
+
+?>
+{embed='includes/header'}
+	<section>
+		<div class="center">
+			<h2>PayPal Transaction Canceled</h2>
+			<p><a href="<?php echo $url ?>">Checkout with PayPal</a></p>
+			<p><a href="/buy/checkout">Checkout with a different payment method.</a></p>
+		</div>
+	</section>
+{embed='includes/footer'}

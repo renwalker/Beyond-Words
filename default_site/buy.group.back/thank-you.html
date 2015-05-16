@@ -1,0 +1,447 @@
+<?
+	ini_set('display_errors' , 'yes');
+	error_reporting(E_ALL ^ E_NOTICE);
+	@session_start();
+
+	if (!array_key_exists('order_info', $_SESSION))
+	{
+		$msg = "\n\nsession:\n";
+		$msg .= print_r($_SESSION, TRUE);
+		mail('david.advocaat@adpearance.com', 'BW debug -  no order info', $msg);
+		header("Location: /buy/cart");
+	}
+	$orderInfo = unserialize(base64_decode($_SESSION['order_info']));
+
+	$msg = "\n\nsession:\n";
+	$msg .= print_r($_SESSION, TRUE);
+	$msg .= "\n\norderInfo:\n";
+	$msg .= print_r($orderInfo, TRUE);
+	mail('david.advocaat@adpearance.com', 'BW debug -  thank-you start', $msg);
+	
+
+	include($_SERVER['DOCUMENT_ROOT'].'/templates/includes/arrayList.php');	
+	
+
+	$this->EE =& get_instance();
+
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->library('encrypt');
+	$this->EE->load->model('order_model');
+	$this->EE->load->model('cartthrob_members_model');
+	$this->EE->load->library('cartthrob_emails');
+	$this->EE->load->library('cartthrob_session');
+
+	$this->EE->load->library('image_helper');
+	$this->EE->load->library('Acumen');
+	$this->EE->load->model('channel_images_model');
+	$this->EE->load->model('cartthrob_entries_model');
+	$this->EE->load->model('product_model');
+	$this->EE->load->model('member_model');
+	$this->EE->load->model('cart_model');
+	$this->EE->load->helper('data_formatting');
+
+	if (array_key_exists('preapprovalKey', $_SESSION))
+	{
+		$preapprovalKey = $_SESSION['preapprovalKey'];
+		unset($_SESSION['preapprovalKey']);
+		require_once PATH_THIRD . 'ad_paypal/ad_paypal_lib.php';
+
+		/* calculate totals */
+		$instock = 0;
+		$shipping = 0;
+		if (array_key_exists('order_data_instock', $_SESSION))
+		{
+			$order_data_instock = unserialize(base64_decode($_SESSION['order_data_instock']));
+			foreach ($order_data_instock['items'] AS $item)
+			{
+				$instock += $item['price'] * $item['quantity'];
+			}
+			unset($_SESSION['order_data_instock']);
+
+			$shipping = $order_data_instock['shipping_plus_tax'];
+		}
+
+		$backorders = 0;
+		if (array_key_exists('order_backorder', $_SESSION))
+		{
+			$order_backorder = unserialize(base64_decode($_SESSION['order_backorder']));
+			foreach ($order_backorder['items'] AS $item)
+			{
+				$backorders += $item['price'] * $item['quantity'];
+			}
+			unset($_SESSION['order_backorder']);
+		}
+
+		$charge_now = $instock + $shipping;
+		$total = $backorders + $instock + $shipping;
+
+
+	$msg = "\nbackorders: $backorders\ninstock: $instock\nshipping: $shipping\ntotal: $total\ncharge_now: $charge_now\n\n";
+
+		/* capture instock and shipping charges */
+		if ($charge_now > 0)
+		{
+			$data = ad_paypal_lib::preapproval_capture($charge_now, $preapprovalKey);
+	$msg .= "\n\npp data:\n";
+	$msg .= print_r($data, TRUE);
+
+		}
+	mail('david.advocaat@adpearance.com', 'BW debug -  post capture', $msg);
+
+		if (0 >= $charge_now OR $data['success'])
+		{
+			/* update order status */
+			// update status of the instock order
+			$sql = "UPDATE `exp_channel_titles` AS t
+					LEFT JOIN `exp_channels` AS c ON c.channel_id = t.channel_id
+					SET t.status = 'Open - paypal'
+					WHERE	t.url_title LIKE 'order_$orderInfo[order_id]%' AND
+							c.channel_name = 'orders' AND
+							t.status = 'Open - paypal pending'";
+			$results = $this->EE->db->query($sql);
+
+			$msg = "$sql\n\n";
+			$msg .= print_r($results, TRUE);
+			mail('david.advocaat@adpearance.com', 'BW debug -  update order status', $msg);
+
+
+			// send transactional email
+			$emails = $this->EE->cartthrob_emails->get_email_for_event("completed");
+
+			if (!empty($emails)) {
+				foreach ($emails as $email_content) {
+					$this->EE->cartthrob_emails->send_email($email_content, $orderInfo);
+				}
+			}
+
+			// acumen
+			$this->EE->acumen->email_acumen($orderInfo, $orderInfo['order_id']);
+
+			if (isset($guestCheckout))
+			{
+				$this->EE->session->destroy();
+			}
+		}
+	}
+
+	unset($_SESSION['order_info']);
+
+	$products = $orderInfo['items'];
+	
+	$discount = $this->EE->cartthrob->cart->discount();
+
+	if ($discount != '' and $discount != '0.00')
+	{
+		$injectedProduct['price'] = '-'.$discount;
+		$injectedProduct['item_options']['product_sku'] = 'Discount';
+		$injectedProduct['quantity'] = '1';
+		array_push($products, $injectedProduct);	
+	}
+
+	$linkshare = new stdClass;
+
+	$linkshare->src = 'http://track.linksynergy.com/ep';
+
+	$linkshare->params = new stdClass;
+
+	$linkshare->params->mid = 37125;
+
+	$skus = array();
+	$qs = array();
+	$amts = array();
+	
+	if (is_array($products))
+	{
+		foreach($products as $product){
+
+			$skus[] = trim($product['item_options']['product_sku']);
+			if ($product['item_options']['product_sku'] == 'Discount')
+			{
+				$qs[] = '0';
+			}
+			else
+			{
+				$qs[] = $product['quantity'];
+			}
+			$amts[] = money_format('%i',$product['price']) * $product['quantity'] * 100;
+		}
+	}
+	
+	$linkshare->params->skulist = implode('|', $skus);
+	$linkshare->params->qlist = implode('|', $qs);
+	$linkshare->params->amtlist = implode('|', $amts);
+	$linkshare->params->ord = $this->EE->cartthrob->store->config('last_order_number');
+
+	$linkshare->params->cur = 'USD';
+
+	foreach($linkshare->params as $k => $v)
+	{
+		$linkshare->params->{$k} = $k . '=' . $v;
+	}
+
+	$linkshare_url = $linkshare->src . '?' . implode('&', (array)$linkshare->params);
+
+	$this->EE->cartthrob->cart->clear()
+		->clear_coupon_codes()
+		->clear_totals();
+	
+	$this->EE->cartthrob->cart->save();
+
+
+?>
+{!--
+mid 		Required 		A static numeric merchant ID constant provided to you by LinkShare.
+ord 		Required 		This is a unique transaction orderID composed of 1 to 40 nonblank characters.
+skulist 	Required 		This is a unique product identifier. When several different products are included in a single order, distinct SKUs should be pipe-delimited using |. Please note: Pipe-delimiters, even when URL encoded, cannot be used as part of the data value. In addition, the order that the SKUs are placed in must be followed for qlist, amtlist, and namelist. See example below.
+qlist 		Required 		This is the quantity value. For an order with distinct items, this is a pipe-delimited list of quantity values. The order of values in this list must match the order of values in the skulist.
+amtlist 	Required 		This is the amount value in form of (price * quantity * 100). A sale of $3.25 is output as 325. GBP example: a total sale of £3.50 is output as 350. This multiplication by 100 excludes Japan network merchants. The amount value excludes shipping and tax. For an order with distinct items, this is a pipe-delimited list of amount values. The order of values in this list must match the order of values in the skulist.
+cur 		Required 		Alphanumeric 3 characters. Use (‘USD’, ‘CAD’, ‘GBP’, 'JPY', 'BRL') for U.S. dollar, Canadian dollar, British pound, Japanese Yen, or Brazilian Real. If not present, will default to the currency based on your network.
+namelist 	Optional 		This is the product name value. For an order with distinct items, this is a pipe-delimited list of product name values. Please note: Pipe-delimiters, even when URL encoded, cannot be used as part of the data value. The order of values in this list must match the order of values in the skulist.
+--}
+
+{embed='includes/header'}
+<script src="//configusa.veinteractive.com/tags/A4249710/3111/41C7/BC87/28ED46AE1FD1/tag.js" type="text/javascript" async></script>
+<img src="//cdsusa.veinteractive.com/DataReceiverService.asmx/Pixel?journeycode=A4249710-3111-41C7-BC87-28ED46AE1FD1" width="1" height="1"/>
+{breadcrumbs_cart}
+
+<div role="main" class="row">
+	<?
+		if (is_array($orderInfo) and $_SERVER['REMOTE_ADDR'] != '173.164.72.169')
+		{
+			?>
+			<script type="text/javascript">
+			  
+
+			  _gaq.push(['_addTrans',
+				'<?=$this->EE->cartthrob->store->config("last_order_number");?>',           // transaction ID - required
+				'Beyond Words',  // affiliation or store name
+				'<?=$orderInfo["total"]?>',          // total - required
+				'0',           // tax
+				'<?=$orderInfo["shipping"]?>',              // shipping
+				'<?=$orderInfo["shipping_city"]?>',       // city
+				'<?=$orderInfo["shipping_state"]?>',     // state or province
+				'<?=$orderInfo["shipping_country"]?>'             // country
+			  ]);
+			</script>
+			
+			<?
+			foreach($orderInfo['items'] as $keyProduct => $valProduct)
+			{
+				?>
+				<script>
+				   // add item might be called for every item in the shopping cart
+				   // where your ecommerce engine loops through each item in the cart and
+				   // prints out _addItem for each
+				  _gaq.push(['_addItem',
+					'<?=$this->EE->cartthrob->store->config("last_order_number");?>',           // transaction ID - required
+					'<?=$valProduct["item_options"]["product_sku"]?>',           // SKU/code - required
+					'<?=$valProduct["title"]?> - <?=$valProduct["item_options"]["product_type"]?>',        // product name
+					'',   // category or variation
+					'<?=$valProduct["price"]?>',          // unit price - required
+					'<?=$valProduct["quantity"]?>'               // quantity - required
+				  ]);
+				</script>
+				<?
+			}
+			?>
+			<script>
+				  _gaq.push(['_trackTrans']); //submits transaction to the Analytics servers
+
+				  (function() {
+					var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+					ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+					var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+				  })();
+			</script>
+			<?
+		}
+	?>
+	<div class="twelve columns">
+	     <h2 class="title">Thank you for your purchase!</h2>
+		 <h2 class="note green">Behold! You have chosen wisely...</h2>
+		 You will receive an order confirmation shortly. Please call {phone_number_tracking} or email  <a href="mail:info@beyondword.com">info@beyondword.com</a> with any questions. Thank you!
+	</div>
+	<?
+	if (is_array($orderInfo))
+	{
+	?>
+	<div class="row">
+	<div class="six columns"style="padding-left:35px;">
+	     <br /><h2 class="title">Order #<?=($this->EE->cartthrob->store->config("last_order_number"))?> Summary</h2>
+		 <table width="100%">
+			<thead>
+				<tr>
+					<th><span>Item</span></th>
+					<th></th>
+					<th align="center"><span>Price</span></th>
+					<th><span>Quantity</span></th>
+					<th><span>Total Price</span></th>
+				</tr>
+			</thead>
+
+			<tbody>
+				<?
+					$hasDigital = 0;
+					foreach($orderInfo['items'] as $keyProduct => $valProduct){
+						@$imageDetails = $this->EE->channel_images_model->get_images($valProduct['entry_id']);
+						$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+						$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+						$resizedImageFileName = $imageFileName.'__tiny'.$extension;
+
+						$fullProductDetails = $this->EE->cartthrob_entries_model->entry($valProduct['entry_id']);
+						
+						$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+					?>
+						<tr>
+							<!-- Product image -->
+							<td class="product_image">
+								<div class="product">
+										<div class="book">
+											<img src="<?=$fullImageUrl;?>" alt="<?=$valProduct['title'];?>" style="width:50px" />
+										</div>
+									<?
+										switch(str_replace(' ', '', strtolower($valProduct['item_options']['purchase_type'])))
+										{
+											case "preorder":
+												echo '<span class="sale">Preorder</span>';
+												break;
+											case "backorder":
+												echo '<span class="sale">Backorder</span>';
+												break;
+										}
+									?>
+								</div>
+							</td>
+
+							<!-- Product Info -->
+							<td class="product_info">
+							<?
+								
+								if ($fullProductDetails['type'] == 'Digital')	
+								{
+									$hasDigital = 1;
+									?>
+										<h3 class="title"><a href="/my-account/digital-purchases"><?=$valProduct['title'];?></a></h3>
+									<?
+								}
+								else
+								{
+									?>
+										<h3 class="title"><?=$valProduct['title'];?></h3>
+									<?
+								}
+								
+								?>
+								
+								<h4 class="format"><?=$valProduct['product_options']['option_name']?></h4>
+							</td>
+
+							<!-- Price per unit -->
+							<td class="price" align="center">
+								$<span class="indvProduct<?=$valProduct['row_id']?>"><?=money_format('%i', $valProduct['price']);?></span>
+							</td>
+
+							<!-- Quantity -->
+							<td align="center">
+								<?=$valProduct['quantity'];?>
+							</td>
+
+							<!-- Total Price (Price * Qty) -->
+							<td class="price" align="right">
+								$<span class="totalRowPrice<?=$valProduct['row_id']?>"><?=money_format('%i', $valProduct['price']*$valProduct['quantity']);?></span>
+							</td>
+						</tr><!-- end Single item ------------------------------------------------------------->
+					<?
+					}
+				?>
+			</tbody>
+			<!-- Table Footer -->
+			<tfoot>
+				<tr>
+					<!-- Totals -->
+					<td colspan="5" style="border-top:1px solid #CCCCCC;">
+						<table border="0" cellspacing="0" cellpadding="0" class="totals" align="right">
+							<tr class="grand_total">
+								<td><span class="cartTotalAmount">(<?=$orderInfo['shipping_method']?>)&nbsp;&nbsp;&nbsp; $<?=money_format('%i', $orderInfo['shipping_plus_tax'])?></span></td>
+							</tr>
+							<tr class="grand_total">
+								<td><span class="cartTotalAmount" align="right">(discount)&nbsp;&nbsp;&nbsp; -$<?=money_format('%i', $orderInfo['discount'])?></span></td>
+							</tr>
+
+							<tr class="grand_total">
+								<td align="right" >$<span class="cartTotalAmount"><?=money_format('%i' , $orderInfo['total_cart'])?></span></td>
+							</tr>
+						</table>
+					</td><!-- end totals -->
+
+				</tr>
+
+			</tfoot>
+		 </table>
+		<?
+		if ($hasDigital == 1)
+		{
+		?>
+			<a href="/my-account/digital-purchases"><button type="submit" class="button_single_red">Click here to view your digital puchases!</button></a>
+		<?		
+		}
+		?>
+	</div>
+	<div class="five columns">
+		<br /><h2 class="title">Billing Summary</h2>
+		<?=$orderInfo['billing_first_name']?> <?=$orderInfo['billing_last_name']?><br />
+		<?=$orderInfo['billing_address']?> <?=$orderInfo['billing_address2']?><br />
+		<?=$orderInfo['billing_city']?>, <?=$statesArray[$orderInfo['billing_state']]?>, <?=$orderInfo['billing_zip']?><br />
+		<?=$countryArray[$orderInfo['billing_country']];?>
+		<br /><br /><h2 class="title">Shipping Summary</h2>
+		<?=$orderInfo['shipping_first_name']?> <?=$orderInfo['shipping_last_name']?><br />
+		<?=$orderInfo['shipping_address']?> <?=$orderInfo['shipping_address2']?><br />
+		<?=$orderInfo['shipping_city']?>, <?=$statesArray[$orderInfo['shipping_state']]?>, <?=$orderInfo['shipping_zip']?><br />
+		<?=$countryArray[$orderInfo['shipping_country']];?>	</div>
+	</div>
+	<?
+	}
+	?>
+</div>
+<?
+if (is_array($orderInfo) and $_SERVER['REMOTE_ADDR'] != '173.164.72.169')
+{
+	?>
+	<img src="<?php echo $linkshare_url; ?>">
+	<?
+
+}	
+
+$orderTotalInCents = str_replace('.','',str_replace(',','',money_format('%i',$orderInfo["subtotal"])));
+?>
+<!-- Optimizely Code -->
+
+<script type="text/javascript">
+window.optimizely = window.optimizely || [];
+window.optimizely.push(['trackEvent', "Order Completed", '<?=$orderTotalInCents?>']);
+</script>
+
+<!-- Google Code for View Through Conversions Conversion Page -->
+<script type="text/javascript">
+/* <![CDATA[ */
+var google_conversion_id = 990391108;
+var google_conversion_language = "en";
+var google_conversion_format = "2";
+var google_conversion_color = "ffffff";
+var google_conversion_label = "AWBKCPzQ7gQQxNag2AM";
+var google_conversion_value = '<?=$orderInfo["subtotal"]?>';
+/* ]]> */
+</script>
+<script type="text/javascript" src="//www.googleadservices.com/pagead/conversion.js">
+</script>
+<noscript>
+<div style="display:inline;">
+<img height="1" width="1" style="border-style:none;" alt="" src="//www.googleadservices.com/pagead/conversion/990391108/?value=<?=$orderInfo["subtotal"]?>&amp;label=AWBKCPzQ7gQQxNag2AM&amp;guid=ON&amp;script=0"/>
+</div>
+</noscript>
+
+
+{embed='includes/footer'}

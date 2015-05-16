@@ -1,0 +1,114 @@
+{if logged_in}
+	{!-- if group_id != 1 && group_id != 7 && group_id != 8}
+		{redirect="/"}
+	{/if --}
+{if:else}
+	{redirect="/my-account"}
+{/if}
+{embed='includes/header'}
+<script type="text/javascript">
+function createLink(url){
+	url = base64encode(url);
+	url = $('#affiliate_link').prop("defaultValue") + '&go=' + url;
+	$('#affiliate_link').val(url);
+}
+
+function base64encode(str){
+	if (window.btoa) {
+		return window.btoa(str);
+	} else {
+	    var keyStr = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+	    var output = "";
+        var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+        var i = 0;
+
+        while (i < str.length) {
+
+            chr1 = str.charCodeAt(i++);
+            chr2 = str.charCodeAt(i++);
+            chr3 = str.charCodeAt(i++);
+
+            enc1 = chr1 >> 2;
+            enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+            enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+            enc4 = chr3 & 63;
+
+            if (isNaN(chr2)) {
+                enc3 = enc4 = 64;
+            } else if (isNaN(chr3)) {
+                enc4 = 64;
+            }
+
+            output += keyStr.charAt(enc1) + keyStr.charAt(enc2) + keyStr.charAt(enc3) + keyStr.charAt(enc4);
+
+        }
+
+        return output;
+	}
+}
+
+$(document).ready(function() {
+	createLink($('#destination_url').val());
+});
+</script>
+<style type="text/css">
+input.overt{
+	border: 1px solid black;
+	width: 100%;
+}
+</style>
+<div role="main" class="row">
+	<div class="ten columns">
+		<div class="content readability">
+			<h1 class="title">Beyond Words Affiliate Program</h1>
+			<p>intro text</p>
+			<h2>Current Commissions Account Balance:</h2>
+			<p>You have ${exp:affiliate_plus:balance} in your commissions account.</p>
+			<h2>Link Generator</h2>
+			<p>
+				<label for="destination_url">Enter the url of the page you want to link to:</label><br />
+				<input class="overt" id="destination_url" type="text" 
+					value="http://www.BeyondWord.com/presents" 
+					onchange="createLink(this.value)" /><br />
+				<br />
+				<label for="affiliate_link">Copy your affiliate link from here:</label><br /> 
+				<input class="overt" id="affiliate_link" type="text" 
+					value="{exp:affiliate_plus:link}" /><br />  
+			</p>
+			<h2>Request a Withdrawal</h2>
+			<p>
+				{exp:affiliate_plus:withdraw_request_form return="SAME_PAGE"}
+					{if 1 == {has_min}}
+						<input type="submit" value="Request payout" />
+						<input type="hidden" name="amount" value="212" />
+					{if:else}
+						You must have at least ${amount_min} in your commissions account to request a withdrawal.
+					{/if}
+				{/exp:affiliate_plus:withdraw_request_form}
+			</p>
+			<h2>Previous Withdrawals</h2>
+			<p>
+				{exp:affiliate_plus:withdraw_history}
+					{if no_results}You have not made any withdrawals.{/if}
+					{count}. ${if amount}{amount}{if:else}{amount_pending}{/if}, requested on {request_date format="%Y-%m-%d"} and {status}{if status=='Processed'} on {payment_date format="%m/%d/%Y"}{/if}<br/>
+				{/exp:affiliate_plus:withdraw_history}
+			</p>
+			<h2>Your Statistics:</h2>
+			<p>
+				<h3>Hits / Conversions</h3>
+				{exp:affiliate_plus:hits}
+					<p>
+						Total hits: {hits}<br/>
+						Total conversions: {conversions}<br/>
+						Conversion rate: {conversion_rate}%
+					</p>
+				{/exp:affiliate_plus:hits}
+				<h3>Commissions</h3>
+				{exp:affiliate_plus:stats}
+					{if no_results}You have not earned any commissions yet.{/if}
+					<p>{count}. ${commission}, recorded on {record_date format="%m/%d/%Y"}</p>
+				{/exp:affiliate_plus:stats}
+			</p>
+		</div>
+	</div>
+{embed='includes/footer'}

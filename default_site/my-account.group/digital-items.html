@@ -1,0 +1,81 @@
+<?
+	$this->EE =& get_instance();
+	$this->EE->load->model('order_model');
+	
+	$member_id = $this->EE->session->userdata('member_id');
+	$orders = $this->EE->order_model->get_member_orders($member_id);
+	if (is_array($orders))
+	{
+		foreach($orders as $valOrder)
+		{
+			unset($items);
+			$items = $this->EE->order_model->get_order_items($valOrder['entry_id']);
+			if (is_array($items))
+			{
+				foreach($items as $valItem)
+				{
+					$productIDS[] = $valItem['entry_id'];
+				}
+			}
+		}
+	}
+	
+	if (is_array($productIDS) && count($productIDS) > 0)
+	{
+		$digitalProducts = $this->EE->db->query("select exp_channel_data.entry_id from exp_channel_titles left join exp_channel_data on exp_channel_data.entry_id = exp_channel_titles.entry_id where exp_channel_titles.entry_id in (".implode(',',$productIDS).") and (field_id_100 = 'Digital' or field_id_100 = 'Video')")->result_array();
+		
+	}
+?>
+<div class="twelve columns">
+	<div class="row">
+		<h1 class="title">Digital Products</h1>
+	</div>
+	<div class="row">
+		<?
+			if (is_array($digitalProducts) && count($digitalProducts) > 0)
+			{
+				foreach($digitalProducts as $valDigital)
+				{
+					$entry_id_list[] = $valDigital['entry_id'];
+				}
+
+				?>
+				{exp:channel:entries entry_id="<?=implode('|',$entry_id_list)?>" status="Open|Closed"}
+					<div class="two column" style="float:left;">
+						{product_image limit="1"}
+							{if type == "Video"}
+								<a href="#{entry_id}" class="fancy_video">
+							{/if}
+								<img src="{image:url}" />
+							{if type == "Video"}
+								</a>
+							{/if}
+						{/product_image}
+						
+						{if type == "Digital"}
+							{digital_assets}
+								<h4 style="padding:5px;"><a href="{file}"><span style="color:#000;">{row_count}.</span> {file_title}</a></h4></center>
+							{/digital_assets}
+						{/if}
+						
+						{if type == "Video"}
+							<p><h4><a href="#{entry_id}" class="fancy_video"><p>{title}</p>&nbsp; &nbsp; Watch Video &raquo;</a></p>
+							<div id="{entry_id}" style="display:none">
+								<div class="row">
+									{digital_video_iframe}
+								</div>
+							</div>
+						{/if}
+						
+					</div>
+				{/exp:channel:entries}
+				<?
+				
+			}
+			else
+			{
+				echo 'You have no digital items purchased.';
+			}
+		?>
+	</div>
+</div>

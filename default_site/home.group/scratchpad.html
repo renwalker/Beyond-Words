@@ -1,0 +1,51 @@
+<?
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+    $this->EE->load->model('order_model');
+
+	$productSQL = "SELECT exp_channel_titles.entry_id as `entry_id`,field_id_101 as `product_format` exp_channel_titles.title as `entry_title` FROM exp_channel_titles left join exp_channel_data on exp_channel_data.entry_id = exp_channel_titles.entry_id where exp_channel_titles.channel_id = 6";
+    $productQuery = $this->EE->db->query($productSQL);
+    $productArray = $productQuery->result_array();
+	
+	foreach($productArray as $key => $val)
+	{
+		$title = $val['title'];
+		$last4 = substr($title , strlen($title)-5,strlen($title));
+		if (strtolower($last4) == ', the')
+		{
+			$title = 'The '.substr($title , 0,strlen($title)-5);
+		}
+
+		
+		echo $productSQLUpdate = "update exp_channel_titles set title = '".$title."' where entry_id = '".$val['entry_id']."'".'<br />';
+		
+//		$this->EE->db->query($productSQLUpdate);
+
+		
+	}
+	echo 'done1';
+
+/*	ini_set('display_errors','yes');
+	error_reporting(E_ALL);
+	$this->EE =& get_instance();
+
+	$matrixFieldId = 150;
+	$channelId = 4;
+
+	$productSQL = "SELECT exp_channel_titles.entry_id as `entry_id`, exp_channel_titles.title as `event_title`, exp_matrix_data.col_id_5 as `event_time` FROM exp_channel_titles left join exp_matrix_data on exp_matrix_data.entry_id = exp_channel_titles.entry_id where exp_channel_titles.channel_id = '.$channelId.' and exp_matrix_data.field_id = ".$matrixFieldId." order by exp_matrix_data.col_id_5 desc";
+    $productQuery = $this->EE->db->query($productSQL);
+    $productArray = $productQuery->result_array();
+	foreach($productArray as $key => $val)
+	{
+		if ($val['event_time'] != NULL)
+		{
+			echo '<h3>'.$val['event_title'].' - '.date('Y-m-d H:i:s',$val['event_time']).'<h3>';
+		}
+	}
+*/	
+
+/*
+
+
+*/
+?>

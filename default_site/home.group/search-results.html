@@ -1,0 +1,193 @@
+<?
+	error_reporting(E_ALL);
+	$this->EE =& get_instance();
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('image_helper');
+	$this->EE->load->model('channel_images_model');
+
+	$this->EE->load->model('cartthrob_entries_model');
+
+	$searchArray = array();
+
+	$keyword = $_GET['search'];
+	$bannedWords = array('hardcover','paparback','dvd','gift');
+
+	$searchSQL = 'SELECT exp_channel_data.field_id_151 as `product_options`,exp_channel_data.field_id_100 as `product_type`, exp_channel_titles.url_title,exp_channel_titles.entry_id,exp_channel_titles.channel_id,exp_channel_titles.title, MATCH(exp_channel_titles.title) AGAINST ("'.mysql_real_escape_string($keyword).'") AS `score` FROM exp_channel_titles left join exp_channel_data on exp_channel_data.entry_id = exp_channel_titles.entry_id WHERE (MATCH (exp_channel_titles.title) AGAINST ("'.mysql_real_escape_string($keyword).'") or exp_channel_titles.title like "%'.mysql_real_escape_string($keyword).'%") and status != "Closed" order by score desc limit 50';
+	$searchQuery = $this->EE->db->query($searchSQL);
+
+	$secondQuery = $searchQuery->result_array();
+
+
+	if (count($secondQuery) > 0)
+	{
+		$searchArray = $secondQuery;
+	}
+
+	if (strlen($keyword) > 4 and !strstr($keyword, ' ') and !in_array(strtolower($keyword), $bannedWords))
+	{
+		$sql = $this->EE->db->query("SELECT entry_id,field_id_151 as `product_options` from exp_channel_data where channel_id = 6") or die(mysql_error());
+		$row = $sql->result_array();
+
+		foreach($row as $keyRow => $valRow)
+		{
+			$array = unserialize(base64_decode($valRow['product_options']));
+			
+			if(is_array($array))
+			{
+				foreach($array as $productOptions)
+				{
+					if (in_array($keyword , $productOptions))
+					{
+						$foundMatch = $productOptions;
+						$foundMatch['entry_id'] = $valRow['entry_id'];
+						$productInfo = $this->EE->cartthrob_entries_model->entry($foundMatch['entry_id']);
+						$newArrayForPush['entry_id'] = $productInfo['entry_id'];
+						$newArrayForPush['title'] = $productInfo['title'];
+						$newArrayForPush['url_title'] = $productInfo['url_title'];
+						$newArrayForPush['channel_id'] = $productInfo['channel_id'];
+						$newArrayForPush['product_options'] = $productInfo['product_options'];
+						$newArrayForPush['score'] = 5;
+						array_push($searchArray, $newArrayForPush);
+						break;
+					}
+				}
+			}
+		}
+	}
+?>
+{embed='includes/header'}
+{breadcrumbs_search}
+<div role="main" class="row view_all_authors">
+	<div class="twelve columns">
+		<ul id="list">
+			<li class="author_item row"><h2>Search Results</h2></li>
+			<?
+				foreach($searchArray as $searchArrayIndex => $searchArrayVal)
+				{
+					unset($imageDetails);
+					unset($urlStarter);
+					unset($thumbnail_ending);
+					unset($additionalInfo);
+					unset($resultType);
+					unset($fullImageUrl);
+					$proceed = 0;
+
+					switch ($searchArrayVal['channel_id'])
+					{
+						case "4":
+							$proceed = 1;
+							$urlStarter = 'events/';
+							$thumbnail_ending = 'tiny';
+							$additionalInfo = '';
+							$resultType = 'Event';
+							break;
+						case "1":
+							//blog
+							$proceed = 1;
+							$urlStarter = 'about/';
+							$thumbnail_ending = 'tiny';
+							$additionalInfo = '';
+							$resultType = 'General Content';
+							break;
+						case "12":
+							//categories
+							$proceed = 1;
+							$urlStarter = 'books/'; /* get absolute parent */
+							$thumbnail_ending = 'tiny';
+							$additionalInfo = '';
+							$resultType = 'Category';
+							break;
+						case "6":
+							//products
+							$proceed = 1;
+							$urlStarter = 'product/';
+							$thumbnail_ending = 'tiny';
+							$additionalInfo = unserialize(base64_decode($searchArrayVal['product_options']));
+							$resultType = $searchArrayVal['product_type'];
+							break;
+						case "3":
+							//authors
+							$proceed = 1;
+							$urlStarter = 'authors/';
+							$thumbnail_ending = 'medium';
+							$additionalInfo = '';
+							$resultType = 'Author';
+							break;
+						case "2":
+							//blog
+							$proceed = 1;
+							$urlStarter = 'blog/';
+							$thumbnail_ending = 'tiny';
+							$additionalInfo = '';
+							$resultType = 'Blog Post';
+							break;
+					}
+
+					if ($proceed == 0){continue;}
+
+
+					@$imageDetails = $this->EE->channel_images_model->get_images($searchArrayVal['entry_id']);
+
+					if (count($imageDetails) > 0)
+					{
+						$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+						$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+						$resizedImageFileName = $imageFileName.'__'.$thumbnail_ending.$extension;
+						$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+					}
+
+					?>
+						<li class="author_item row">
+								<div class="one columns">
+								<?
+									if (isset($fullImageUrl))
+									{
+										?>
+										<div class="author_thumb" style="background-image:url(<?=$fullImageUrl;?>);"></div>
+										<?
+									}
+								?>
+								</div>
+
+							<div class="seven columns">
+								<a href="/<?=$urlStarter.$searchArrayVal['url_title']?>" class="title"><?=$searchArrayVal['title']?></a>
+								
+								<?
+									if($additionalInfo != '')
+									{
+										if($additionalInfo[0]['isbn10'] != '')
+										{
+											echo '<br />ISBN: '.$additionalInfo[0]['isbn10'];
+										}
+										else
+										{
+											if ($additionalInfo[0]['isbn13'] != '')
+											{
+												echo '<br />ISBN: '. $additionalInfo[0]['isbn13'];
+											}
+										}
+									}
+								?>
+								<br /><?=$resultType?>
+							</div>
+							<div class="right-side columns">
+								<a href="/<?=$urlStarter.$searchArrayVal['url_title']?>" class="button_arrows_grey">View Details</a>
+							</div>
+						</li>
+					<?
+				}
+			
+				if (count($searchArray) == 0)
+				{
+					echo '<li class="author_item row"><h3>We were unable to find any results for: <span style="color:#404040">'.$_GET['search'].'</span></h3></li>';
+				}
+			?>
+			
+			</ul>
+	</div>
+</div><!-- end main -->
+{embed='includes/footer}
+

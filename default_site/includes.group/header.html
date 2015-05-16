@@ -1,0 +1,219 @@
+<?
+	error_reporting(E_ALL ^ E_NOTICE);
+
+	$this->EE =& get_instance();
+
+	$this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+	$this->EE->load->library('cartthrob_loader');
+
+	$productCount = $this->EE->cartthrob->cart->count_all();
+
+	if (array_key_exists('affiliate', $_GET))
+	{
+		setcookie('isaidc', $_GET['affiliate'],  (time()+2592000));
+	}
+?>
+<!DOCTYPE html>
+<!--[if IE 7]><html class="lt-ie9 lt-ie8" lang="en"><![endif]-->
+<!--[if IE 8]><html class="lt-ie9" lang="en"><![endif]-->
+<!--[if gt IE 8]><!--><html  lang="en"><!--<![endif]-->
+
+<head>
+
+	<meta charset="utf-8" http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+	<meta name="HandheldFriendly" content="true">
+	<meta name="viewport" content="width=device-width" />
+
+	<!--  SEO Meta Data -->
+	<link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon" />
+	<link rel="alternate" type="application/rss+xml" title="RSS" href="/rss.xml" />
+	
+	{embed=includes/seo_tags}
+
+	<!--  CSS Files (make it pretty) -->
+	<link rel="stylesheet" type="text/css" href="/templates/css/screen.css" />
+
+
+	<!-- Scripts to make CSS work -->
+	<script type="text/javascript" src="//use.typekit.net/dog6cvq.js"></script>
+	<script type="text/javascript">try{Typekit.load();}catch(e){}</script>
+
+	<!--[if lt IE 9]><script src="https://html5shiv.googlecode.com/svn/trunk/html5.js"></script><![endif]--> <!-- IE Fix for HTML5 Tags -->
+
+	<!--[if IE]>
+		<style>
+			.dvd:before {
+				display:none !important;
+			}
+			.dvd:after {
+				display:none !important;
+			}
+	    </style
+	<![endif]-->
+	
+	<!--Pinterest Verification Code--><meta name="p:domain_verify" content="99cf8fc3d942c3a0bcc62453259e4632"/><!--End Pinterest Verification Code-->
+</head>
+
+
+<body>
+{set_ad_cookie_php}
+<div class="notification" style="display: none;"><div class="check"></div><p>Product Added</p></div>
+
+
+<!-- MOBILE HEADER -->
+<div class="show-for-small-only">
+	<header role="banner" class="nav_header">
+		<div class="row top_menu_wrapper">
+			<div class="small-5 columns">
+				<img src="templates/images/logo-horizontal.png" alt="Beyond Words Publishing" style="max-height: 50px; width: auto; max-width: 100%;" />
+			</div>
+			<div class="small-7 columns text-right">
+				<a id="search" class="search-mobile mobile-menu-icon" title="Search site"></a>
+				<a href="/buy/cart" id="cart" class="cart-mobile mobile-menu-icon" title="Go to cart">
+					<div class="cart_count" <?=(($productCount == 0)?'style="display:none;"':'')?>><?=$productCount;?></div>
+				</a>
+				<a id="secondary-menu" class="mobile-menu-icon hamburger" title="Show menu"><span></span></a>
+			</div>
+			<div class="secondary-menu">
+				<nav>
+					<ul>
+						<li><a href="/books/young-adult">Young Adult</a></li>
+						<li><a href="/books/children">Children's</a></li>
+						<li><a href="/customized-books">Customized Books</a></li>
+						<li><a href="/authors">Authors</a></li>
+						<li><a href="/events">Events</a></li>
+						<li><a href="/about/wholesale">B2B</a></li>
+						<li><a href="/my-account">My Account</a></li>
+					</ul>
+				</nav>
+			</div>
+		</div>
+		<div id="mobile-search" style="display:none;">
+			<div class="row">
+				<div class="small-12 columns">
+					<form method="get" action="/search-results">
+						<input type="hidden" name="XID" value="{XID_HASH}" /> 
+						<div id="search_container">
+							<input type="search" placeholder="Enter keyword" name="search" id="search" value="<?=((isset($_GET['search']))?$_GET['search']:'')?>" />
+							<input type="submit" id="search_button" />
+						</div><!-- /search -->
+					</form>
+				</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="medium-12 columns">
+				<nav class="main_menu clearfix">
+					<ul>
+						<li><a href="/books">Books</a></li>
+						<li><a href="/dvds">Films</a></li>
+						<li><a href="/gifts">Gifts</a></li>
+						<li><a href="/blog">Our Blog</a></li>
+					</ul>
+				</nav>
+			</div>
+		</div>
+	</header>
+	<div class="tres_dots"></div>
+</div>
+
+
+
+<!-- DESKTOP HEADER -->
+<div class="show-for-medium-up">
+<header role="banner" class="nav_header">
+	<div class="top_menu_wrapper"><hr /></div>
+
+
+	<div class="row relative">
+
+		<!-- top menu -->
+		<nav class="top_menu clearfix">
+			<div class="row collapse">
+				<ul>
+				<div class="medium-4 columns">
+					<li class="medium-6 large-4 columns"><a href="/authors">Authors</a></li>
+		  			<li class="medium-6 large-4 columns"><a href="/events">Events</a></li>
+		  			<li class="hide-for-medium large-4 columns"><a href="/about/wholesale">B2B</a></li>
+				</div>
+				<div class="medium-4 columns">
+					<li id="logo"><a href="/">Beyond Words</a></li>
+				</div>
+				<div class="medium-4 columns">
+					<li class="show-for-medium medium-6 columns"><a href="/about/wholesale">B2B</a></li>
+					<li class="medium-6 large-4  columns"><a href="/blog">Our Blog</a></li>
+					<div class="hide-for-medium large-7 columns">
+						<div class="row collapse">
+							<li class="social small-3"><a href="{facebook}" class="facebook" title="Facebook" target="_blank">Facebook</a></li>
+							<li class="social small-3"><a href="{twitter}" class="twitter" title="Twitter" target="_blank">Twitter</a></li>
+							<li class="social small-3"><a href="{googleplus}" class="gplus" title="Google+" target="_blank">Google +</a></li>
+							<li class="social small-3"><a href="{youtube}" class="youtube" title="YouTube" target="_blank">YouTube</a></li>
+						</div>
+					</div>
+				</div>
+				</ul>
+			</div>
+		</nav>
+		<!-- /top menu -->
+
+
+		<!-- tween menu -->
+		<div id="tween_menu" class="row">
+			<div class="">
+				
+				<div class="medium-6 columns">
+					<form method="get" action="/search-results">
+						<input type="hidden" name="XID" value="{XID_HASH}" /> 
+						<div id="search_container">
+							<div class="search_label">Search <span>&amp;</span> Discover</div>
+							<input type="search" placeholder="Enter keyword" name="search" id="search" value="<?=((isset($_GET['search']))?$_GET['search']:'')?>" />
+							<input type="submit" id="search_button" />
+						</div><!-- /search -->
+					</form>
+				</div>
+
+				<div class="medium-4 large-6 columns">
+					
+					<!-- cart -->
+					<div id="cart_container" class="waves right-side">
+						<div id="cart_login"><a href="/my-account">My Account</a></div>
+						<div class="row cart_content">
+							<div class="medium-6 columns">
+								<a href="/buy/cart"><div class="cart_icon"><div class="cart_count" <?=(($productCount == 0)?'style="display:none;"':'')?>><?=$productCount;?></div></div></a>
+							</div>
+							<div class="cart_info medium-6 columns">
+								<span class="basket-label">Your Basket<br/></span>
+								<span class="price">$<span class="cartPreviewPrice"><?=money_format('%i', $this->EE->cartthrob->cart->total());?></span></span><br/>
+								<a href="/buy/cart"><strong>Checkout <span>&rarr;</span></strong></a>
+							</div>
+						</div>
+
+						<div class="cart_offer">
+							Free Shipping<br>
+							<span>On Orders Over $30.00</span>
+						</div>
+					</div><!-- /cart -->
+
+				</div>
+			</div>
+		</div>
+
+
+		<!-- main menu -->
+		<nav class="main_menu clearfix">
+			<ul>
+				<li id="nav_books"><a href="/books">Books</a></li>
+				<li id="nav_teen"><a href="/books/young-adult">Young Adult</a></li>
+				<li id="nav_kids"><a href="/books/children">Children's</a></li>
+				<li id="nav_dvds"><a href="/dvds">Films</a></li>
+				<li id="nav_gifts"><a href="/gifts">Gifts</a></li>
+				<li id="nav_custom"><a href="/customized-books">Customized Books</a></li>
+			</ul>
+		</nav><!-- /main menu -->
+
+	</div><!-- /row -->
+
+	<div class="tres_dots"></div>
+
+</header>
+</div>

@@ -1,0 +1,238 @@
+{embed='includes/header'}
+{breadcrumbs_store}
+<div role="main" class="row" id="main_body">
+	{sidebar_store}
+	<div class="ten columns">
+<!--  ========================================================================== -->
+{if last_segment_category_id != "73" && last_segment_category_id != "71" && last_segment_category_id != "69" && last_segment_category_id != "67" && last_segment_category_id != "68" && last_segment_category_id != "66" && last_segment_category_id != "65"}
+	<!-- # Featured Box -->
+	<section class="featured">
+		<div class="box_header">
+			<h2 class="heading"><span class="serif">{exp:channel:entries channel="category_pages" category="{last_segment_category_id}"}{title}{/exp:channel:entries}</span> Featured Book</h2>
+			<div class="note widow">
+				{exp:channel:entries channel="category_pages" category="{last_segment_category_id}"}
+					{category_custom_note}
+				{/exp:channel:entries}
+			</div>
+		</div>
+{exp:channel:entries channel="category_pages" limit="1"}
+	{exp:playa:children field="featured_product"}
+		<div class="featured_content waves row collapse">
+			<!-- the product image -->
+			<div class="three columns">
+				<a href="{site_url}bookstore/product">
+					<div class="product">
+						<div class="book">{exp:channel_images:images entry_id="{entry_id}" limit="1" }<img src="{image:url:large}" alt="{image:title}" />{/exp:channel_images:images}</div>
+					</div>
+				</a>
+			</div>
+			<!-- the product details  -->
+			<div class="nine columns">
+				<h2 class="title"><a href="{site_url}bookstore/product/">{title}</a></h2>
+				<p>{description_intro}</p>
+				
+				<a href="http://www.youtube.com/watch?v=t1kApnsayeQ" class="trailer media_fancybox" title="<img src='{site_url}images/demo/book1.png' /><em>You are watching the trailer for: </em><h3>Frequency: The Power of Personal Vibration</h3>	<a href='#'>Purchase this film</a>">
+					Watch Trailer
+				</a>
+				<!-- bottom content -->
+				<div class="featured_bottom clearfix">
+					<div class="six columns collapse">
+						Discover more like this from:
+						
+						<ul class="categories">
+							<li><a href="{site_url}bookstore/category">Category Name</a></li>
+							<li><a href="{site_url}bookstore/category">Category Name</a></li>
+							<li><a href="{site_url}bookstore/category">Category Name</a></li>
+						</ul>
+					</div>
+					
+					<div class="right-side columns">
+						<a href="#ADD" class="button_add">Add to Basket $19.95</a>
+						<a href="#" class="more_formats">2 other formats available</a>
+					</div>
+				</div><!-- end featured_bottom -->
+			</div><!-- end nine col -->
+		</div><!-- end featured_content -->
+	{/exp:playa:children}
+{/exp:channel:entries}
+	</section><!-- end featured -->
+
+
+<!--  ========================================================================== -->
+	<!-- # Featured Author -->
+		<section class="featured_author border-heavy">
+		<div class="row">
+			<div class="twelve columns collapse">
+				<h2 class="section_title"><span class="serif">{exp:channel:entries channel="category_pages" category="{last_segment_category_id}"}{title}{/exp:channel:entries}</span> Featured Author</h2>
+			</div>
+
+					<div class="nine columns collapse">
+						<!-- short bio -->
+								<p class="intro">{bio}</p>
+						<!-- book by author -->
+						<div class="one-fifths columns">
+							<div class="product product_small">
+								<a href="#">
+									<div class="book"><img src="{site_url}images/demo/book2.png" /></div>
+								</a>
+							</div>
+						</div>
+						<!-- about book + links -->
+						<div class="four-fifths columns">
+							<p><a class="intro" href="{site_url}bookstore/product">Book Title</a> mollis interdum. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. Etiam porta sem malesuada magna mollis euismod.</p>
+							<ul class="link_list">
+								<li><a href="{site_url}bookstore/category">Read {title}'s Full Bio</a></li>
+								<li><a href="{site_url}bookstore/category">View All Books from {title}</a></li>
+							</ul>
+						</div>
+					</div> <!-- / nine col end -->
+					<!-- author pic -->
+					<div class="three columns">
+						<a href="{site_url}authors" class="author_image" >
+							<img src="{site_url}images/demo/author1.jpg" title="AUTHORNAME" />
+						</a>
+					</div>
+				</div>
+		</section>
+
+	<!-- end featured author -->
+{/if}
+
+
+
+<!--  ========================================================================== -->
+<!-- # Product list view -->
+	<section class="product_list">
+		<!-- Entries ordered by title -->
+		<div class="sort row">
+			<div class="five columns">
+				<form action="" method="post" class="custom">
+				<label>Sort by</label>
+					<select id="sort-drop" name="sort-drop">
+						<option>Title</option>
+						<option>Best Selling</option>
+						<option>Top Rated</option>
+						<option>Price (Lowest to Highest)</option>
+						<option>Price (Highest to Lowest)</option>
+					</select>
+				</form>
+			</div>
+			<div class="five columns">
+				<!-- PAGINATION -->
+			</div>
+		</div>
+<div class="row">
+{exp:channel:entries channel="products" dynamic="no" limit="20" orderby="title" sort="asc" category="{last_segment_category_id}"}
+
+		<div class="list_item row">
+				<!-- product image -->
+				<div class="one-fifths columns">
+					<div class="product">
+						<a href="{site_url}bookstore/product/{url_title}">
+							<div class="book"> <!-- change class if dvd or gift -->
+								{exp:channel_images:images entry_id="{entry_id}" limit="1" }
+									<img src="{image:url:grid}" alt="{image:title}" width="154"/>
+								{/exp:channel_images:images}
+							</div>
+						</a>
+					</div>
+				</div>
+				<!-- product details -->
+				<div class="four-fifths columns collapse" >
+					<div class="nine columns clearfix">
+						<!-- title and author -->
+						<h3 class="title"><a href="{site_url}bookstore/product/{url_title}">{title}</a></h3>
+						{exp:playa:children field="author_1"}
+							<h5 class="author">{title}</h5>
+						{/exp:playa:children}
+
+						{if author_2 != ""}
+							{exp:playa:children field="author_2"}
+								<h5 class="author">and {title}</h5>
+							{/exp:playa:children}
+						{/if}
+
+					</div>
+					<div class="seven columns">
+						<!-- tags -->
+
+						<div class="tag_wrap">
+							{categories}
+								{if category_id == 69}
+									<span class="tag new">New</span>
+								{if:elseif category_id == 67}
+									<span class="tag coming_soon">Coming Soon</span>
+								{if:elseif category_id == 66}
+									<span class="tag staff_pick">Staff Pick</span>
+								{if:elseif category_id == 68}
+									<span class="tag sale">Sale</span>
+								{/if}
+							{/categories}
+						</div>
+
+						<!-- add additional spans for coming_soon, staff_picks, sale if applicable-->
+
+
+						<!-- rating -->
+						<div class="rating current_rating">
+
+							<div class="four_star"><!-- change to [one-five]_class for stars -->
+
+								<span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span><span>&#149;</span>
+
+							</div>
+
+						</div>
+
+						<!-- description -->
+						{if description_intro !=""}
+							{exp:trunchtml chars="300" inline="<a href='#' class='read_more'>&hellip;</a>"}{description_intro}{/exp:trunchtml}
+						{if:else}
+							{exp:trunchtml chars="300" inline="<a href='#' class='read_more'>&hellip;</a>"}{product_description}{/exp:trunchtml}
+						{/if}
+
+
+						<a href="{site_url}bookstore/product/{url_title}">More details</a>
+					</div>
+					<div class="right-side columns">
+						{product_options}{option_name}{/product_options}
+						<a href="#ADD" class="button_add">Hardcover $19.95</a><!-- multiple formats only apply to books -->
+						<a href="#ADD" class="button_add">Paperback $14.95</a>
+						<a href="#ADD" class="button_add">Audio Book $9.95</a>
+						{categories}
+							{if category_id == 68}
+							<span class="tag sale">Sale</span><span class="sale_price">Was <span class="old">$24</span>  Save 15% </span><!-- add span under any format with a sale -->
+							{/if}
+						{/categories}
+					</div>
+				</div>
+		</div><!-- end list_item row / single product -->
+
+		{/exp:channel:entries}
+		</div>
+	</section>
+
+
+<!--  ========================================================================== -->
+	<!-- # Blog Box -->
+	<section class="blog_box">
+		<div class="box_header">
+			<h2 class="heading"><span class="serif white">From the</span> Beyond Words <span class="serif">Blog</span></h2>
+		</div>
+		<div class="blog_box_content row">
+			<div class="two columns">
+				<a href="#" class="post_date"><span>May</span><br/>30</a>
+			</div>
+			<div class="eight columns">
+				<h3 class="heading"><a href="#">Blog Article Title</a></h3>
+				<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. Donec id elit non mi porta gravida at eget metus.  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. Donec id elit non mi porta gravida at eget metus.  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. <a href="#">Read on...</a></p>
+			</div>
+			<div class="two columns">
+				<img src="http://placekitten.com/g/200/300" />
+			</div>
+		</div>
+	</section><!-- end blog box -->
+
+
+</div>
+{embed='includes/footer'}

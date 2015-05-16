@@ -1,0 +1,449 @@
+<?
+	$this->EE =& get_instance();
+
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('image_helper');
+	$this->EE->load->model('channel_images_model');
+
+?>
+{embed='includes/header'}
+
+<!-- slider-->
+<script type="text/javascript" src="{site_url}templates/js/modernizr.custom.28468.js"></script>
+<link rel="stylesheet" type="text/css" href="{site_url}templates/css/slider.css" />
+<script type="text/javascript" src="{site_url}templates/js/jquery.cslider.js"></script>
+
+<script type="text/javascript">
+	$(function() {
+		$('#da-slider').cslider();
+	});
+</script>
+
+
+
+<!--  ========================================================================== -->
+<!-- HOME SLIDER -->
+
+<section class="slider-wrap">
+		<div id="da-slider" class="da-slider">
+			{exp:channel:entries channel="homepage"}
+				{home_slider}
+				<div class="da-slide">
+					<div class="da-content">
+						<h2>{slider_headline}<br/><span>{slider_subheadline}</span></h2>
+						<p>{slider_description}</p>
+						{if slider_button_url}
+						<a href="{slider_button_url}" class="da-link button_single_red">
+							{if slider_button}
+								{slider_button}
+							{if:else}
+								Read More
+							{/if}
+						</a>
+						{/if}
+						<div class="da-img">
+							{if slider_button_url}<a href="{slider_button_url}">{/if}<img src="{if slider_img_url}{slider_img_url}{if:else}{slider_image}{/if}" alt="image01" />{if slider_button_url}</a>{/if}
+						</div>
+					</div>
+				</div>
+				{/home_slider}
+			{/exp:channel:entries}
+
+				<nav class="da-arrows">
+					<span class="da-arrows-prev"></span>
+					<span class="da-arrows-next"></span>
+				</nav>
+		</div>
+</section>
+
+<!--  end slider ========================================================================== -->
+
+
+<div role="main" class="row home">
+
+	<div class="nine columns">
+
+
+	<!--  ========================================================================== -->
+	<!-- Best-Selling Product Carousel -->
+	<section class="product_grid">
+		<div class="row">
+			<div class="twelve columns collapse">
+				{exp:channel:entries channel="homepage"}
+					{featured_category_title}
+					<h2 class="section_title">
+						<span class="serif">{category_serif}</span>
+						{category_kerned}
+					</h2>
+					{/featured_category_title}
+				{/exp:channel:entries}
+			</div>
+
+			<div class="twelve columns collapse" id="home_carousel_hold">
+
+			<ul class="products home_carousel_products" id="home_products_carousel">
+				{exp:channel:entries channel="products" limit="30" category="71"}
+				<li>
+					<div class="product">
+							<a href="/product/{url_title}">
+								<!-- image-->
+								<div class="{if  type== 'Book'}book{if:elseif  type== 'DVD'}dvd{if:else}gift{/if}">
+									{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+										<img src="{image:url:grid}" title="{title}" />
+										{if image:no_images}
+									      <img src="/images/author_placeholder.jpg" title="{title}" />
+									     {/if}
+									{/exp:channel_images:images}
+								</div>
+
+								<!-- tags-->
+								<div class="tag_wrap">
+								{categories show="66|67|68|69"}
+									{if category_id== "67"}
+									   <span class="tag coming_soon">{category_name}</span>
+									{if:elseif category_id== "69"}
+										 <span class="tag new"> {category_name}</span>
+								    {if:elseif category_id== "68"}
+									    <span class="tag sale">Sale</span>
+									{if:elseif category_id== "66"}
+									    <span class="tag staff_pick">Staff Pick</span>
+									{if:else}{/if}
+								{/categories}
+								</div>
+
+								<!-- title-->
+								<h4 class="title">{title}</h4>
+
+								<!-- author-->
+								<h5 class="author">{exp:playa:children field="author_1"}{title}{/exp:playa:children}&nbsp;{exp:playa:children field="author_2"}&amp; {title}{/exp:playa:children}</h5>
+
+
+								<!-- show format if a gift-->
+								{if  type== 'Gift'} <h5 class="author"> {format} </h4> {/if}
+							</a>
+							<!-- rating-->
+							<!--
+							<div class="rating current_rating">
+								<div class="four_star">
+									<span>•</span><span>•</span><span>•</span><span>•</span><span>•</span>
+								</div>
+							</div>
+							-->
+					</div>
+				</li>
+				{/exp:channel:entries}
+
+			</ul>
+			</div>
+		</div>
+		</section><!-- end best seller carousel -->
+
+
+
+	<!--  ========================================================================== -->
+	<!-- # Featured Author -->
+	<section class="featured_author">
+	<div class="row">
+
+		<div class="twelve columns collapse">
+			<h2 class="section_title"><span class="serif">Featured Author:</span>&nbsp;{exp:channel:entries channel="homepage" field="featured_homepage_author"}{exp:playa:children field="featured_homepage_author"}{title}{/exp:playa:children}{/exp:channel:entries}</h2>
+		</div>
+
+		<div class="nine columns collapse">
+		{exp:channel:entries channel="homepage"}
+
+			<!-- short bio -->
+			<div class="intro">
+			{exp:playa:children}
+				{if short_bio !=''}
+					{short_bio}
+				{if:else}
+					{full_bio strip_tags="true" allowable_tags="<a><em>" word_limit="60"}</em></a>
+				{/if}
+			{/exp:playa:children}
+			<br/>
+			</div><!-- end bio -->
+
+			<!-- book by author -->
+			<div class="one-fifths columns">
+				{exp:playa:children field="featured_book_by_author"}
+					<div class="product product_small">
+						<a href="/product/{url_title}">
+							<div class="{if  type== 'Book'}book{if:elseif  type== 'DVD'}dvd{if:else}gift{/if}">
+								{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+								<img src="{image:url:grid}" title="{title}" />
+									{if image:no_images}
+										<img src="/images/product_placeholder.jpg" title="{title}" />
+									{/if}
+								{/exp:channel_images:images}
+							</div>
+						</a>
+					</div>
+				{/exp:playa:children}
+			</div><!-- end book by author -->
+
+
+			<!-- about book + links -->
+			<div class="four-fifths columns">
+				{exp:playa:children field="featured_book_by_author"}
+					<h3 class="title" href="/product/{url_title}">{title}</h3>
+					{if description_intro !=''}
+						{description_intro}
+					{if:else}
+						{exp:trunchtml chars="200" inline="<a href='/product/{url_title}' class='read_more'>&hellip;</a>"}{product_description}{/exp:trunchtml}
+					{/if}
+				{/exp:playa:children}
+					<ul class="link_list">
+						{exp:playa:children field="featured_homepage_author"}<li><a href="/authors/{url_title}#author_works">View all titles by {title}</a></li>{/exp:playa:children}
+					</ul>
+			</div><!-- end about -->
+
+		</div> <!-- / nine col end -->
+
+		<!-- author pic -->
+		<div class="three columns">
+			{exp:playa:children field="featured_homepage_author"}
+				<a href="/authors/{url_title}" class="author_image" >
+					{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+						<img src="{image:url:medium}" title="{title}" />
+						{if image:no_images}
+							<img src="/images/author_placeholder.jpg" title="{title}" />
+						{/if}
+					{/exp:channel_images:images}
+				</a>
+			{/exp:playa:children}
+		</div><!-- end author image -->
+	{/exp:channel:entries}
+	</div>
+	</section><!-- end featured author -->
+</div><!-- end 9 col -->
+
+
+	<!-- Right promotions -->
+	<div class="right-side columns side_promo">
+		{exp:channel:entries channel="homepage"}
+			{featured_promo}
+				<a href="{promo_link}">
+					<img src="{promo_image}" />
+				</a>
+			{/featured_promo}
+		{/exp:channel:entries}
+	</div>
+
+	<div class="right-side columns">
+		<aside class="right_sidebar home_coming_soon">
+			<header>
+				<h3 class="heading"><span class="serif">Coming</span> Soon</h3>
+			</header>
+
+			<div class="inner_content">
+				{exp:channel:entries channel="products" category="67" limit="3"}
+					<!-- Single Product -->
+					<article class="list_item row">
+						<!-- image -->
+						<div class="two-fifths columns">
+							<a href="/product/{url_title}">
+								<div class="product">
+									<div class="{if  type== 'Book'}book{if:elseif  type== 'DVD'}dvd{if:else}gift{/if}">
+										{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+											<img src="{image:url:tiny}" title="{title}" />
+											{if image:no_images}
+												<img src="/images/product_placeholder.jpg" title="{title}" />
+											{/if}
+										{/exp:channel_images:images}
+									</div>
+								</div>
+							</a>
+						</div>
+						<!-- title -->
+						<div class="three-fifths columns">
+							<h4 class="title"><a href="/product/{url_title}">{title}</a></h4>
+							<h6 class="author">{exp:playa:children field="author_1"}{title}{/exp:playa:children}&nbsp;{exp:playa:children field="author_2"}&amp; {title}{/exp:playa:children}</h6>
+						</div>
+					</article>
+				{/exp:channel:entries}
+			</div>
+
+			<footer>
+				<ul class="link_list">
+					<li><a href="/books/coming-soon">View All Coming Soon</a></li>
+				</ul>
+			</footer>
+
+		</aside>
+	</div>
+</div><!-- end main -->
+
+
+
+<!--  ========================================================================== -->
+	<!-- # Green Insert -->
+	<section class="home_insert">
+		<div class="row">
+
+			<!-- Beyond Words Blog -->
+			<div class="four columns">
+				<div class="insert_feed">
+					<header>
+						<h3 class="heading"><span class="serif">Beyond Words</span> Blog</h3>
+					</header>
+					<div class="inner_content">
+						<ul class="insert_blog">
+							<!-- Blog Item -->
+
+							{exp:channel:entries channel="blog" orderby="date" sort="desc" limit="5"}
+							<li>
+								<a href="/blog/{url_title}">
+									<div class="insert_left"><span>{entry_date format="%M"}</span>{entry_date format="%j"}</div>
+									<div class="insert_right">{title}</div>
+								</a>
+							</li>
+							{/exp:channel:entries}
+						</ul>
+					</div>
+				</div>
+				<div class="insert_link">
+					<a href="/blog">View All Blog Posts</a>
+				</div>
+			</div>
+
+			<!-- Upcoming Events -->
+			<div class="four columns">
+				<div class="insert_feed">
+					<header>
+						<h3 class="heading"><span class="serif">Upcoming</span> Events</h3>
+					</header>
+					<div class="inner_content">
+						<ul class="insert_events">
+						<?
+							$matrixFieldId = 150;
+							$channelId = 4;
+
+							$productSQL = "
+										SELECT
+											exp_channel_titles.entry_id as `entry_id`,
+											exp_matrix_data.col_id_8 as `event_end_date`,
+											exp_matrix_data.col_id_7 as `locations`,
+											exp_channel_titles.url_title as `event_url_title`,
+											exp_channel_titles.title as `event_title`,
+											exp_matrix_data.col_id_5 as `event_time`
+										FROM
+											exp_channel_titles
+											left join exp_matrix_data on exp_matrix_data.entry_id = exp_channel_titles.entry_id
+										where
+											exp_channel_titles.channel_id = ".$channelId." and
+											exp_matrix_data.field_id = ".$matrixFieldId." and
+											exp_matrix_data.col_id_5 >= ".(time()-(60*60*24))."
+										order by exp_matrix_data.col_id_5 asc
+										limit 5
+										";
+							$productQuery = $this->EE->db->query($productSQL);
+							$productArray = $productQuery->result_array();
+
+							foreach($productArray as $key => $val)
+							{
+								$getRelationshipsSQL = "select exp_playa_relationships.child_entry_id as `child_entry_id` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$val['entry_id']."' order by exp_playa_relationships.parent_field_id desc";
+								$getRelationshipsQuery = $this->EE->db->query($getRelationshipsSQL);
+								$getRelationshipsArray = $getRelationshipsQuery->result_array();
+								$fullImageUrl = '';
+
+								foreach($getRelationshipsArray as $relationshipKey => $relationshipVal)
+								{
+									$counter=0;
+									@$imageDetails = $this->EE->channel_images_model->get_images($relationshipVal['child_entry_id']);
+									if (count($imageDetails) > 0)
+									{
+										$counter++;
+										if ($counter == 1) {$ending_segment = 'tiny';}
+										else{$ending_segment = 'small';}
+										break;
+									}
+								}
+								if (count($imageDetails) == 0)
+								{
+									@$imageDetails = $this->EE->channel_images_model->get_images($val['entry_id']);
+									$ending_segment = 'small';
+								}
+
+
+								$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+								$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+								$resizedImageFileName = $imageFileName.'__'.$ending_segment.$extension;
+								$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+
+
+
+								if ($val['event_time'] != NULL)
+								{
+									?>
+										<li>
+											<a href="/events/<?=$val['event_url_title']?>">
+												<div class="insert_left">
+													<img src="<?=$fullImageUrl?>" title="<?=$val['event_title']?>" />
+												</div>
+												<div class="insert_right">
+													<h4 class="title"><?=$val['event_title']?></h4>
+													<h5 class="date">
+														<?
+
+															if ($val['event_end_date'] == '' or $val['event_end_date'] == NULL or $val['event_end_date'] == 0){
+																echo date('F j, Y', $val['event_time']);
+															}
+															else{
+																echo date('F j, Y', $val['event_time']);
+															}
+
+															if ($val['event_end_date'] != '' or $val['event_end_date'] != NULL or $val['event_end_date'] != 0){
+																echo '&nbsp;&ndash;&nbsp;'.date('M j, Y', $val['event_end_date']);
+															}
+
+														?>
+													</h5>
+													<h6 class="location">
+														<?
+															$locations = json_decode($val['locations']);
+															if ($locations->city != '')
+															{
+																echo $locations->city;
+															}
+
+															if ($locations->city != '' and $locations->region != ''){echo ', ';}
+
+															if ($locations->region != '')
+															{
+																echo $locations->region;
+															}
+														?>
+													</h6>
+												</div>
+											</a>
+										</li>
+									<?
+								}
+							}
+						?>
+						</ul>
+					</div>
+				</div>
+				<div class="insert_link">
+					<a href="/events">View All Events</a>
+				</div>
+			</div>
+
+			<!-- Twitter Feed -->
+			<div class="four columns">
+				<div class="twitter_box" id="tweets">
+					<ul id="tweet">
+						<span class="loading-text"><img src="/images/ajax-loader.gif" alt="Please wait while Twitter feed loads..." /></span>
+				      </ul>
+				</div>
+				 <a href="https://twitter.com/beyondwordspub" class="twitter-follow-button" data-show-count="false">Follow @beyondwordspub</a>
+				<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+			</div>
+		</div>
+	</section>
+
+{embed='includes/footer'}

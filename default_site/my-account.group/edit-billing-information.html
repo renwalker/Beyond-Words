@@ -1,0 +1,145 @@
+<?
+	require_once($_SERVER['DOCUMENT_ROOT'].'/templates/includes/arrayList.php');
+
+	$member_id = $this->EE->session->userdata('member_id');
+	$memberInfo = $this->EE->member_model->get_all_member_data($member_id);
+	$memberInfoArray = $memberInfo->result_array();
+
+	if ($_POST['formSubmited'])
+	{
+		$formProceed = 1;
+
+		if (empty($_POST['billing_first_name'])) {$formProceed = 0; $error['billing_first_name'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['billing_last_name'])) {$formProceed = 0; $error['billing_last_name'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['billing_address'])) {$formProceed = 0; $error['billing_address'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['billing_city'])) {$formProceed = 0; $error['billing_city'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['billing_country'])) {$formProceed = 0; $error['billing_country'] = '<span class="form_error">Required</span>';}
+		if ($_POST['billing_country'] == 'US' or $_POST['billing_country'] == '')
+		{
+			if (empty($_POST['billing_state'])) {$formProceed = 0; $error['billing_state'] = '<span class="form_error">Required</span>';}
+		}
+		else
+		{
+			if (empty($_POST['billing_province'])) {$formProceed = 0; $error['billing_province'] = '<span class="form_error">Required</span>';}
+		}
+
+		if (empty($_POST['billing_zip'])) {$formProceed = 0; $error['billing_zip'] = '<span class="form_error">Required</span>';}
+
+		if ($formProceed == 1)
+		{
+			$data = array(
+				'm_field_id_3' => $_POST['billing_first_name'],
+				'm_field_id_4' => $_POST['billing_last_name'],
+				'm_field_id_5' => $_POST['billing_address'],
+				'm_field_id_6' => $_POST['billing_address2'],
+				'm_field_id_7' => $_POST['billing_city'],
+				'm_field_id_8' => $_POST['billing_state'],
+				'm_field_id_9' => $_POST['billing_province'],
+				'm_field_id_10' => $_POST['billing_zip'],
+				'm_field_id_11' => $_POST['billing_country']
+			);
+
+			$this->EE->member_model->update_member_data($member_id, $data);
+
+			$this->EE->functions->redirect('/my-account');
+		}
+	}
+
+?>
+<form method="POST">
+<input type="hidden" name="XID" value="{XID_HASH}" /> 
+<fieldset>
+	<h1 class="title">Billing Address</h1>
+
+	<div class="row">
+		<div class="six columns">
+			<label for="first-name">First Name</label><?=((isset($error['billing_first_name']))?$error['billing_first_name']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_3']?>" id="billing_first_name" name="billing_first_name" />
+		</div>
+		<div class="six columns">
+			<label for="last-name">Last Name</label><?=((isset($error['billing_first_name']))?$error['billing_last_name']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_4']?>" id="billing_last-name" name="billing_last_name">
+		</div>
+	</div>
+	<div class="row">
+		<div class="six columns">
+			<label for="address">Address</label><?=((isset($error['billing_first_name']))?$error['billing_address']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_5']?>" id="billing_address" name="billing_address">
+		</div>
+		<div class="six columns">
+			<label for="address-2">Address 2 <span class="helper">( optional )</span></label>
+			<input type="text" id="billing_address2" value="<?=$memberInfoArray[0]['m_field_id_6']?>" name="billing_address2">
+		</div>
+	</div>
+	<div class="row">
+		<div class="six columns">
+			<label for="city">City</label><?=((isset($error['billing_first_name']))?$error['billing_city']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_7']?>" id="billing_city" name="billing_city">
+		</div>
+		<div class="three columns">
+			<div class="billing_state_wrapper" style="<?=(($_POST['billing_country'] == 'US' or !isset($_POST['form_submitted']) or $_POST['billing_country'] == '')?'':'display:none;')?>">
+				<label for="state">State</label><?=((isset($error['billing_state']))?$error['billing_state']:'')?>
+				<select name="billing_state" id="state">
+					<option></option>
+					<?
+						foreach ($statesArray as $stateKey => $stateVal){
+							if ($_POST['formSubmited']){
+								if ($_POST['billing_state'] == $stateKey){$selected = 'selected';}
+								else {$selected = '';}
+							}
+							else{
+								if ($memberInfoArray[0]['m_field_id_8'] == $stateKey){$selected = 'selected';}
+								else {$selected = '';}
+							}
+							
+							echo '<option value="'.$stateKey.'" '.$selected.'>'.$stateVal.'</option>';
+						}
+					?>
+				</select>
+			</div>
+			<div style="display:none;" class="billing_province_wrapper">
+				<label for="province">Province</label><?=((isset($error['billing_first_name']))?$error['billing_city']:'')?>
+				<input type="text" value="<?=$memberInfoArray[0]['m_field_id_9']?>" id="billing_province" name="billing_province">
+			</div>
+		</div>
+		<div class="three columns">
+			<label class="zipPostal" for="postal-code">Zipcode</label><?=((isset($error['billing_first_name']))?$error['billing_zip']:'')?>
+			<input type="text"  value="<?=$memberInfoArray[0]['m_field_id_10'];?>" id="billing_zip" name="billing_zip">
+		</div>
+	</div>
+	<div class="row">
+		<div class="six columns">
+			<label for="country">Country</label><?=((isset($error['billing_country']))?$error['billing_country']:'')?>
+			<select name="billing_country" id="country">
+				<option></option>
+				<?
+					foreach($countryArray as $keyCountry => $valueCountry)
+					{
+						if ($_POST['formSubmited']){
+							if (isset($_POST['billing_country']) and $_POST['billing_country'] == $keyCountry){$selected = 'selected="selected"';}
+							else{ $selected = '';}
+						}
+						else
+						{
+							if ($memberInfoArray[0]['m_field_id_11'] == $keyCountry){$selected = 'selected="selected"';}
+							else{ $selected = '';}
+						}
+						echo '<option value="'.$keyCountry.'" '.$selected.'>'.$valueCountry.'</option>';
+					}
+				?>
+			</select>
+		</div>
+	</div>
+	<div class="row">
+		<br />
+		<div class="two columns">
+			<h4><a href="/my-account">&larr; Cancel</a></h4>
+		</div>
+		<div class="four columns">
+			<input type="hidden" value="yes" name="formSubmited" />
+			<button class="button_arrows_red">Update billing Address</button>
+		</div>
+	</div>
+</fieldset>
+
+</form>

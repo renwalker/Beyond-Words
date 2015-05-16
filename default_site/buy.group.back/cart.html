@@ -1,0 +1,292 @@
+<?
+	error_reporting(E_ALL ^ E_NOTICE);
+
+	$this->EE =& get_instance();
+
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('image_helper');
+	$this->EE->load->model('channel_images_model');
+
+	$this->EE->load->library('cartthrob_session');
+	$this->EE->load->model('cartthrob_entries_model');
+	$this->EE->load->model('product_model');
+	$this->EE->load->model('cart_model');
+	$this->EE->load->helper('data_formatting');
+
+	$products = $this->EE->cartthrob->cart->items_array();
+?>
+{embed='includes/header'}
+<script src="//configusa.veinteractive.com/tags/A4249710/3111/41C7/BC87/28ED46AE1FD1/tag.js" type="text/javascript" async></script>
+{breadcrumbs_cart}
+
+<div role="main" class="row">
+
+	<div class="twelve columns">
+		 <h2 class="note green">Behold! You have chosen wisely...</h2>
+	</div>
+
+	<div class="twelve columns cart">
+		<table width="100%" border="0" cellspacing="0" cellpadding="0" class="cart_table">
+			<form action="" method="POST">
+			<input type="hidden" name="XID" value="{XID_HASH}" /> 
+			<thead>
+				<tr>
+					<th><span>Item</span></th>
+					<th></th>
+					<th align="center"><span>Retail Price</span></th>
+					<th align="center"><span>Price</span></th>
+					<th><span>Quantity</span></th>
+					<th><span>Total Price</span></th>
+				</tr>
+			</thead>
+
+			<tbody>
+				<?
+					foreach($products as $keyProduct => $valProduct){
+						$entry_id = $valProduct['entry_id'];
+						$p = $this->EE->cartthrob->get_product($entry_id);
+						$productOptions = $p->item_options();
+						
+						switch($valProduct['item_options']['purchase_type'])
+						{
+							case "Bundle":
+								$urlTitleSection = '/bundle';
+								$fullProductOptions = $valProduct['item_options'];
+
+								$productInfo = $this->EE->cartthrob_entries_model->entry($entry_id);
+								
+								@$imageDetails = $this->EE->channel_images_model->get_images($entry_id);
+
+								$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+								$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+								$resizedImageFileName = $imageFileName.'__small'.$extension;
+
+								$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+
+								/* GETTING THE AUTHORS */
+								$authorSQL = "select exp_channel_titles.entry_id as `author_entry_id`, exp_channel_titles.title as `author_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$entry_id."' and exp_playa_relationships.parent_field_id = 195";
+								$authorQuery = $this->EE->db->query($authorSQL);
+								$authorArray = $authorQuery->result_array();
+								unset($authorsArray);
+								foreach($authorArray as $author)
+								{
+									$authorsArray[] = $author['author_title'];
+								}
+							break;
+							default:
+								$urlTitleSection = '/product';
+								foreach($productOptions['product_options'] as $keyOption => $valOption)
+								{
+									if ($valOption['option_value'] == $valProduct['item_options']['product_sku']){
+										$arrayIndex = $keyOption;
+										break;
+									}
+								}
+
+								$fullProductOptions = $productOptions['product_options'][$arrayIndex];
+
+								$productInfo = $this->EE->cartthrob_entries_model->entry($entry_id);
+								
+								@$imageDetails = $this->EE->channel_images_model->get_images($entry_id, 37);
+
+								$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+								$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+								$resizedImageFileName = $imageFileName.'__tiny'.$extension;
+
+								$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+
+								/* GETTING THE AUTHORS */
+								$authorSQL = "select exp_channel_titles.title as `author_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$entry_id."' and (exp_playa_relationships.parent_field_id = 103 or exp_playa_relationships.parent_field_id = 104)";
+								$authorQuery = $this->EE->db->query($authorSQL);
+								$authorArray = $authorQuery->result_array();
+								unset($authorsArray);
+								foreach($authorArray as $author)
+								{
+									$authorsArray[] = $author['author_title'];
+								}
+
+								break;
+
+
+						}
+
+					?>
+						<tr>
+							<!-- Product image -->
+							<td class="product_image">
+								<div class="product">
+									<a href="<?=$urlTitleSection;?>/<?=$valProduct['url_title'];?>">
+										<div class="book">
+											<img src="<?=$fullImageUrl;?>" alt="<?=$p->title();?>" />
+										</div>
+									</a>
+									<?
+										switch(str_replace(' ', '', strtolower($valProduct['item_options']['purchase_type'])))
+										{
+											case "preorder":
+												echo '<span class="sale">Preorder</span>';
+												break;
+											case "backorder":
+												echo '<span class="sale">Backorder</span>';
+												break;
+											case "bundle":
+												echo '<span class="sale">Bundle</span>';
+												break;
+										}
+									?>
+								</div>
+							</td>
+
+							<!-- Product Info -->
+							<td class="product_info">
+								<h2 class="title"><?=$p->title();?></h2>
+
+								<?
+									echo @implode(' and ', $authorsArray);
+								?>
+
+
+								<h4 class="format"><?=$fullProductOptions['option_name']?></h4>
+								<?
+
+									if ($fullProductOptions['option_name'] == 'Hardcover'){
+										if ($valProduct['item_options']['customized_message'] != ''){$customized = 1;}
+										else {$customized = 0;}
+										?>
+										<!-- START - Dont touch the structure of this code. The structure is being used in javascript to identify elements  -->
+										<p>This book qualifies for a custom message on the title page. <br/>Add a personal touch! Have a unique message printed inside this book for only $3. </p>
+										<div class="customMessageWrapper" style="<?=((!$customized)?'display:none;':'')?>; height:80px;">
+											<div class="customMessagePreview" style="<?=((!$customized)?'display:none;':'')?>">
+												<b>Custom Message: </b> <span class="customMessageText"><?=$valProduct['item_options']['customized_message']?></span>
+												<br />
+												<a href="#" class="editCustomMessage">Edit</a>&nbsp;&nbsp;&nbsp;&nbsp;<a href="#" class="removeCustomMessage" data-xid="{XID_HASH}" data-product="<?=$valProduct['row_id']?>">Remove</a>
+											</div>
+
+											<div class="customMessageInput" style="<?=(($customized)?'display:none;':'')?>;"><input type="text" name="customMessage" style="-webkit-transition:all 0.2s linear; background-color:#F6F4F2;  background-position:initial initial; background-repeat:initial initial; border:1px solid #BDBAAF; color:#444444; float:left; height:35px; margin-bottom:20px; width:200px;" /></div>
+
+											<div style="clear:both"></div>
+											<span class="saveCustomMessageWrapper" style="<?=(($customized)?'display:none;':'')?>;">
+												<a href="#" class="cancelCustomMessage">Cancel</a>
+												&nbsp;&nbsp;&nbsp;&nbsp;
+												<a href="#" class="saveCustomMessageLink" data-product="<?=$valProduct['row_id']?>" data-xid="{XID_HASH}" >Save</a>
+											</span>
+										</div>
+										<div class="addCustomMessageLinkWrapper" style="<?=(($customized)?'display:none;':'')?>"><a href="#" class="addCustomMessageLink">Add Custom Message</a></div>
+										<!-- STOP - Dont touch the structure of this code. The structure is being used in javascript to identify elements  -->
+										<?
+									}
+								?>
+							</td>
+
+							<!-- retail price -->
+							<td class="retail_price" align="center">
+								<?if ($fullProductOptions['retail_price'] != ''){?><del>$<span class="indvProduct<?=$valProduct['row_id']?>"><?=money_format('%i', $fullProductOptions['retail_price']);?></span></del><?}else{echo '-';}?>
+							</td>
+
+							<!-- Price per unit -->
+							<td class="price" align="center">
+								$<span class="indvProduct<?=$valProduct['row_id']?>"><?=money_format('%i', $valProduct['price']);?></span>
+							</td>
+
+							<!-- Quantity -->
+							<td>
+								<label for="quantity" class="quantity_label">Qty:</label>
+								<input type="text" class="quantity" data-product="<?=$valProduct['row_id']?>" data-xid="{XID_HASH}" "name="quantity<?=$valProduct['row_id']?>" id="quantity<?=$valProduct['row_id']?>" value="<?=$valProduct['quantity'];?>"/>
+								<br/><br/>
+								<a href="#" class="cartRemoveItem" data-product="<?=$valProduct['row_id']?>" data-xid="{XID_HASH}">Remove Item</a>
+							</td>
+
+							<!-- Total Price (Price * Qty) -->
+							<td class="price">
+								$<span class="totalRowPrice<?=$valProduct['row_id']?>"><?=money_format('%i', $valProduct['price']*$valProduct['quantity']);?></span>
+							</td>
+						</tr><!-- end Single item ------------------------------------------------------------->
+
+					<?
+					}
+				?>
+			</tbody>
+
+			<!-- Table Footer -->
+			<tfoot>
+				<tr>
+
+					<!-- Discount input -->
+					<td colspan="3">
+						<h4 class="title">Discount Code</h4>
+						<p class="format">Enter your discount code below if you have one.</p>
+						<input type="text" name="discount" id="discount" />
+						<button class="apply_discount" data-xid="{XID_HASH}">Apply Discount</button>
+						<p class="format message_discount" style="padding:10px; height:30px; float:left; display:none; "></p>
+					</td>
+
+					<!-- Totals -->
+					<td colspan="3">
+						<table width="100%" border="0" cellspacing="0" cellpadding="0" class="totals">
+							<tr>
+								<td>Subtotal</td>
+								<td>$<span class="subtotalAmount"><?=money_format('%i' , $this->EE->cartthrob->cart->subtotal())?></span></td>
+							</tr>
+							<!--
+							<tr>
+								<td>Shipping</td>
+								<td>TBD</td>
+							</tr> -->
+							<?
+
+							$couponsAdded = $this->EE->cartthrob->cart->coupon_codes();
+
+							if (count($couponsAdded)){
+								echo '<tr>
+										<td><div class="discount_row">Discount</div></td>
+										<td><div class="discount_row"><span class="coupon_code_details">- $'.money_format('%i', $this->EE->cartthrob->cart->discount()).'</span></div></td>
+								</tr>';
+							}
+							else{
+								echo '
+									<tr>
+										<td><div class="discount_row" style="display:none;">Discount</div></td>
+										<td><div class="discount_row" style="display:none;"><span class="coupon_code_details"></span></div></td>
+									</tr>
+								';
+							}
+							?>
+
+
+
+							<tr class="grand_total">
+								<td>Total</td>
+								<td>$<span class="cartTotalAmount"><?=money_format('%i' , $this->EE->cartthrob->cart->total())?></span></td>
+							</tr>
+						</table>
+					</td><!-- end totals -->
+
+				</tr>
+
+				<tr>
+					<td colspan="3">
+						<a href="/" class="bold_link">&larr; Continue Shopping</a>
+					</td>
+					<?
+						if ($this->EE->cartthrob->cart->total() != 0){
+							?>
+							<td colspan="2">
+								<a href="/buy/checkout" class="button_arrows_red checkoutButton">Checkout</a>
+							</td>
+							<?
+						}
+					?>
+				</tr>
+
+			</tfoot>
+
+			</form>
+		</table>
+	</div>
+
+</div>
+
+{embed='includes/footer'}

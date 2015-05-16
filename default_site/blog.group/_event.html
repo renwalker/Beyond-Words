@@ -1,0 +1,65 @@
+<div class="side_event_blog">
+{exp:channel:entries channel="event" dynamic="no" entry_id="{embed:ids}"}
+
+
+<div class="side_event_image">
+{if event_author !=""}
+	{exp:playa:children field="event_author"}
+		{exp:channel_images:images entry_id='{entry_id}' limit='1'}
+			<img src="{image:url:medium}" class="author_image" title="{title}" />
+		{/exp:channel_images:images}
+	{/exp:playa:children}
+{/if}
+
+{if event_product !=""}
+	{exp:playa:children field="event_product"}
+		{exp:channel_images:images entry_id='{entry_id}' limit='1'}
+			<div class="product">
+				<div class="gift">
+					<img src="{image:url:grid}" title="{title}" />
+				</div>
+			</div>
+		{/exp:channel_images:images}
+	{/exp:playa:children}
+{/if}
+
+{if event_image !=""}
+ 	{exp:channel_images:images field="event_image"}
+		<img src="{image:url}" title="{title}" />
+	{/exp:channel_images:images}
+{/if}
+</div>
+
+	<h4 class="title">{title}</h4>
+	{if event_date_location:total_rows > 1}
+		<h4 class="location">Appearing in {event_date_location:total_rows} cities</h4>
+
+		<h4 class="date">
+						<!-- First date in range -->
+						{event_date_location limit="1" orderby="event_date" sort="asc"}
+							{event_date format='%M %j, %Y'}
+						{/event_date_location}
+						&nbsp;&ndash;&nbsp;
+						<!-- Last date in range -->
+						{event_date_location limit="1" orderby="event_date" sort="desc"}
+							{event_date format='%M %j, %Y'}
+						{/event_date_location}
+					</h4>
+	{if:else}
+		{event_date_location limit="1"}
+			<h4 class="location">
+				{event_address}
+					{if city !=""}{city},{/if}
+					{if region !=""}{region}{/if}
+				{/event_address}
+			</h4>
+			<h4 class="date">
+				{if event_end_date ==0}{event_date format='%l, '}{/if}{event_date format='%M %j, %Y'}
+				{if event_end_date !=0}&nbsp;&ndash;&nbsp;{event_end_date format='%M %j, %Y'}{/if}
+			</h4>
+
+		{/event_date_location}
+	{/if}
+
+{/exp:channel:entries}
+</div>

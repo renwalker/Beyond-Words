@@ -1,0 +1,45 @@
+<!-- SIDEBAR -->
+<aside  class="two columns" id="sidebar">
+
+	<h4><span class="serif">Blog</span> Categories</h4>
+	<ul>
+
+		{exp:channel:categories channel="blog" style="linear" dynamic="no" category_group="26" show_empty="no" }
+			<li><a href="{path='blog/index'}">{category_name}</a></li>
+		{/exp:channel:categories}
+
+		{exp:channel:categories channel="blog" style="linear" dynamic="no" category_group="22" show_empty="no"}
+			{if parent_id=="70"}
+			<li><a href="{path='blog/index'}">{category_name}</a></li>
+			{/if}
+		{/exp:channel:categories}
+		<br/>
+
+		{exp:channel:categories channel="blog" style="linear" dynamic="no" category_group="22" show_empty="no"}
+			{if parent_id=="34"}
+				<li><a href="{path='blog/index'}">{category_name}</a></li>
+			{/if}
+		{/exp:channel:categories}
+
+		{exp:channel:categories channel="blog" style="linear" dynamic="no" category_group="22" show_empty="no"}
+			{if parent_id=="58"}
+				<li><a href="{path='blog/index'}">{category_name}</a></li>
+			{/if}
+		{/exp:channel:categories}
+
+
+    </ul>
+
+<!--
+<div id="search_container" class="blog_search">
+	<div class="search_label">Search within blog</div>
+	<input type="search" name="search" id="search" />
+	<input type="submit" id="search_button" />
+</div>
+-->
+
+ {embed="contact/newsletter_sidebar"}
+
+<a href="/blog/rss" class="rss" target="_blank">Subscribe to this blog via RSS</a>
+
+</aside><!-- end sidebar -->

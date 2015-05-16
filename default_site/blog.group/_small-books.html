@@ -1,0 +1,4 @@
+{exp:channel:entries channel="products" limit="4" dynamic="off" entry_id="{embed:ids}"}
+	<li>{exp:channel_images:images entry_id='{entry_id}' limit='1'}<a href="{site_url}product/{url_title}" style="background-image:url({image:url:tiny})" class="has-tip tip-top" title="{title}"></a>{/exp:channel_images:images}</li>
+{/exp:channel:entries}
+

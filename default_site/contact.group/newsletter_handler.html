@@ -1,0 +1,15 @@
+<?php 
+	$this->EE =& get_instance();
+
+	if(isset($_GET['form_name']))
+	{
+		include_once './templates/default_site/contact.group/newsletter_handler.php'; 
+		
+	    $form_result = handle_newsletter($_GET['form_name']);
+
+		$form_result['XID'] = $this->EE->security->generate_xid();
+
+	    echo json_encode($form_result);
+	}
+
+?>

@@ -1,0 +1,9 @@
+{exp:channel:entries channel="products" limit="4" dynamic="off" category="{embed:ids}" limit="3" orderby="random"}
+<div class="product sidebar_product">
+	<div class="{if  type== 'Book'}book{if:elseif  type== 'DVD'}dvd{if:else}gift{/if}">
+	{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+			<a href="/product/{url_title}"><img src="{image:url}" title="{title}" /></a>
+	{/exp:channel_images:images}
+	</div>
+</div>
+{/exp:channel:entries}

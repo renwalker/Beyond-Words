@@ -1,0 +1,145 @@
+<?
+	require_once($_SERVER['DOCUMENT_ROOT'].'/templates/includes/arrayList.php');
+
+	$member_id = $this->EE->session->userdata('member_id');
+	$memberInfo = $this->EE->member_model->get_all_member_data($member_id);
+	$memberInfoArray = $memberInfo->result_array();
+
+	if ($_POST['formSubmited'])
+	{
+		$formProceed = 1;
+
+		if (empty($_POST['shipping_first_name'])) {$formProceed = 0; $error['shipping_first_name'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['shipping_last_name'])) {$formProceed = 0; $error['shipping_last_name'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['shipping_address'])) {$formProceed = 0; $error['shipping_address'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['shipping_city'])) {$formProceed = 0; $error['shipping_city'] = '<span class="form_error">Required</span>';}
+		if (empty($_POST['shipping_country'])) {$formProceed = 0; $error['shipping_country'] = '<span class="form_error">Required</span>';}
+		if ($_POST['shipping_country'] == 'US' or $_POST['shipping_country'] == '')
+		{
+			if (empty($_POST['shipping_state'])) {$formProceed = 0; $error['shipping_state'] = '<span class="form_error">Required</span>';}
+		}
+		else
+		{
+			if (empty($_POST['shipping_province'])) {$formProceed = 0; $error['shipping_province'] = '<span class="form_error">Required</span>';}
+		}
+
+		if (empty($_POST['shipping_zip'])) {$formProceed = 0; $error['shipping_zip'] = '<span class="form_error">Required</span>';}
+
+		if ($formProceed == 1)
+		{
+			$data = array(
+				'm_field_id_12' => $_POST['shipping_first_name'],
+				'm_field_id_13' => $_POST['shipping_last_name'],
+				'm_field_id_14' => $_POST['shipping_address'],
+				'm_field_id_15' => $_POST['shipping_address2'],
+				'm_field_id_16' => $_POST['shipping_city'],
+				'm_field_id_17' => $_POST['shipping_state'],
+				'm_field_id_20' => $_POST['shipping_province'],
+				'm_field_id_18' => $_POST['shipping_zip'],
+				'm_field_id_19' => $_POST['shipping_country']
+			);
+
+			$this->EE->member_model->update_member_data($member_id, $data);
+
+			$this->EE->functions->redirect('/my-account');
+		}
+	}
+
+?>
+<form method="POST">
+<input type="hidden" name="XID" value="{XID_HASH}" /> 
+<fieldset>
+	<h1 class="title">Shipping Address</h1>
+
+	<div class="row">
+		<div class="six columns">
+			<label for="first-name">First Name</label><?=((isset($error['shipping_first_name']))?$error['shipping_first_name']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_12']?>" id="shipping_first_name" name="shipping_first_name" />
+		</div>
+		<div class="six columns">
+			<label for="last-name">Last Name</label><?=((isset($error['shipping_first_name']))?$error['shipping_last_name']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_13']?>" id="shipping_last-name" name="shipping_last_name">
+		</div>
+	</div>
+	<div class="row">
+		<div class="six columns">
+			<label for="address">Address</label><?=((isset($error['shipping_first_name']))?$error['shipping_address']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_14']?>" id="shipping_address" name="shipping_address">
+		</div>
+		<div class="six columns">
+			<label for="address-2">Address 2 <span class="helper">( optional )</span></label>
+			<input type="text" id="shipping_address2" value="<?=$memberInfoArray[0]['m_field_id_15']?>" name="shipping_address2">
+		</div>
+	</div>
+	<div class="row">
+		<div class="six columns">
+			<label for="city">City</label><?=((isset($error['shipping_first_name']))?$error['shipping_city']:'')?>
+			<input type="text" value="<?=$memberInfoArray[0]['m_field_id_16']?>" id="shipping_city" name="shipping_city">
+		</div>
+		<div class="three columns">
+			<div class="shipping_state_wrapper" style="<?=(($_POST['shipping_country'] == 'US' or !isset($_POST['form_submitted']) or $_POST['shipping_country'] == '')?'':'display:none;')?>">
+				<label for="state">State</label><?=((isset($error['shipping_state']))?$error['shipping_state']:'')?>
+				<select name="shipping_state" id="shipping_state">
+					<option></option>
+					<?
+						foreach ($statesArray as $stateKey => $stateVal){
+							if ($_POST['formSubmited']){
+								if ($_POST['shipping_state'] == $stateKey){$selected = 'selected';}
+								else {$selected = '';}
+							}
+							else{
+								if ($memberInfoArray[0]['m_field_id_17'] == $stateKey){$selected = 'selected';}
+								else {$selected = '';}
+							}
+							
+							echo '<option value="'.$stateKey.'" '.$selected.'>'.$stateVal.'</option>';
+						}
+					?>
+				</select>
+			</div>
+			<div style="display:none;" class="shipping_province_wrapper">
+				<label for="province">Province</label><?=((isset($error['shipping_first_name']))?$error['shipping_city']:'')?>
+				<input type="text" value="<?=$memberInfoArray[0]['m_field_id_20']?>" id="shipping_province" name="shipping_province">
+			</div>
+		</div>
+		<div class="three columns">
+			<label class="zipPostal" for="postal-code">Zipcode</label><?=((isset($error['shipping_first_name']))?$error['shipping_zip']:'')?>
+			<input type="text"  value="<?=$memberInfoArray[0]['m_field_id_18'];?>" id="shipping_zip" name="shipping_zip">
+		</div>
+	</div>
+	<div class="row">
+		<div class="six columns">
+			<label for="country">Country</label><?=((isset($error['shipping_country']))?$error['shipping_country']:'')?>
+			<select name="shipping_country" id="shipping_country">
+				<option></option>
+				<?
+					foreach($countryArray as $keyCountry => $valueCountry)
+					{
+						if ($_POST['formSubmited']){
+							if (isset($_POST['shipping_country']) and $_POST['shipping_country'] == $keyCountry){$selected = 'selected="selected"';}
+							else{ $selected = '';}
+						}
+						else
+						{
+							if ($memberInfoArray[0]['m_field_id_19'] == $keyCountry){$selected = 'selected="selected"';}
+							else{ $selected = '';}
+						}
+						echo '<option value="'.$keyCountry.'" '.$selected.'>'.$valueCountry.'</option>';
+					}
+				?>
+			</select>
+		</div>
+	</div>
+	<div class="row">
+		<br />
+		<div class="two columns">
+			<h4><a href="/my-account">&larr; Cancel</a></h4>
+		</div>
+		<div class="four columns">
+			<input type="hidden" value="yes" name="formSubmited" />
+			<button class="button_arrows_red">Update Shipping Address</button>
+		</div>
+	</div>
+</fieldset>
+
+</form>

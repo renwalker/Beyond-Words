@@ -1,0 +1,1761 @@
+<?
+
+	@session_start();
+	ini_set('display_errors', 'yes');
+	error_reporting(E_ALL ^ E_NOTICE);
+
+	$update_addresses = FALSE;
+
+	if(isset($_POST['join_newsletter']) && $_POST['join_newsletter'] == 'yes')
+	{
+		include_once './templates/default_site/contact.group/newsletter_handler.php';
+		handle_newsletter('checkout');
+	}
+	
+	function debugLogAdd($somecontent)
+	{
+		$filename = '/home/beyondwo/public_html/templates/default_site/buy.group/checkout_log.txt';
+		@$handle = fopen($filename, 'a');
+	    @fwrite($handle, ($somecontent."\n"));
+	}
+	
+	function CreditCardCompany($ccNum)
+	{
+		if (@ereg("^5[1-5][0-9]{14}$", $ccNum))
+			return "Mastercard";
+
+		if (@ereg("^4[0-9]{12}([0-9]{3})?$", $ccNum))
+                return "Visa";
+ 
+        if (@ereg("^3[47][0-9]{13}$", $ccNum))
+                return "American Express";
+ 
+        if (@ereg("^3(0[0-5]|[68][0-9])[0-9]{11}$", $ccNum))
+                return "Diners Club";
+ 
+        if (@ereg("^6011[0-9]{12}$", $ccNum))
+                return "Discover";
+ 
+        if (@ereg("^(3[0-9]{4}|2131|1800)[0-9]{11}$", $ccNum))
+                return "JCB";
+ 	}
+
+ 	function is_valid_email($email)
+ 	{
+		$value = trim($email);
+		// Avocados email validation regex based on RFC 5322
+		$regex = "/^[a-z0-9!#$%&'*+\/\=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+\/\=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+(?:[a-z]{2}|com|org|net|edu|gov|mil|biz|info|mobi|name|aero|asia|jobs|museum)$/i";
+		if (!preg_match($regex, $value))
+		{
+			return FALSE;
+		}
+		return TRUE;
+	}
+
+	// *************************************************************************
+	// Initialize Expression Engine and Cartthrob
+	// *************************************************************************
+	require_once($_SERVER['DOCUMENT_ROOT'].'/templates/includes/arrayList.php');
+	$this->EE =& get_instance();
+
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->library('encrypt');
+	$this->EE->load->model('order_model');
+	$this->EE->load->model('cartthrob_members_model');
+	$this->EE->load->model('discount_model');
+	$this->EE->load->library('cartthrob_emails');
+	$this->EE->load->library('cartthrob_session');
+
+	$this->EE->load->library('image_helper');
+	$this->EE->load->library('Acumen');
+	$this->EE->load->model('channel_images_model');
+	$this->EE->load->model('cartthrob_entries_model');
+	$this->EE->load->model('product_model');
+	$this->EE->load->model('member_model');
+	$this->EE->load->model('cart_model');
+	$this->EE->load->helper('data_formatting');
+
+	$unique_identifier = time();
+
+	$products = $this->EE->cartthrob->cart->items_array();
+	$coupons = $this->EE->cartthrob->cart->coupon_codes();
+
+	foreach($products as $keyProductCoupon => $valueCouponPoruct)
+	{
+		/*########## Add Coupon Option START #########*/
+		foreach($coupons as $keyCoupon => $valCoupon)
+		{
+			unset($couponData);
+			$couponData = $this->EE->cartthrob->get_coupon_code_data($valCoupon);
+			$arrayIDS = explode(',', $couponData['entry_ids']);
+			if (in_array($valueCouponPoruct['entry_id'], $arrayIDS))
+			{
+				switch ($couponData['type'])
+				{
+					case "Cartthrob_discount_amount_off_product":
+						$this->EE->cartthrob->cart->update_item($keyProductCoupon, $params = array('item_options' => array('discounted' => money_format('%i', $couponData['amount_off']))));
+						break;
+					case "Cartthrob_discount_percentage_off_product":
+						$this->EE->cartthrob->cart->update_item($keyProductCoupon, $params = array('item_options' => array('discounted' => money_format('%i', ($couponData['percentage_off']*0.01)*$valueCouponPoruct['price']))));
+						break;
+				}
+
+			}
+		}
+		/*########## Add Coupon Option END #########*/
+	}
+	$this->EE->cartthrob->cart->save();
+	$products = $this->EE->cartthrob->cart->items_array();
+
+	// Count how many non-digital products we have in the cart
+	$normalProductsCount = 0;
+	$digitalProductsCount = 0;
+	foreach($products as $determineShippingRequirement)
+	{
+		switch($determineShippingRequirement['item_options']['purchase_type'])
+		{
+			case 'Bundle':
+				foreach($determineShippingRequirement['item_options']['bundle_options'] as $expandedBundle)
+				{
+					$bundleProductDetails = $this->EE->cartthrob_entries_model->entry($expandedBundle['entry_id']);
+
+					if ($bundleProductDetails['type'] != 'Digital' && $bundleProductDetails['type'] != 'Video')
+					{
+						$normalProductsCount++;
+					}
+					else
+					{
+						$digitalProductsCount++;
+					}
+				}
+				break;
+			default:
+				$physicalProductDetails = $this->EE->cartthrob_entries_model->entry($determineShippingRequirement['entry_id']);
+				if ($physicalProductDetails['type'] != 'Digital' && $physicalProductDetails['type'] != 'Video')
+				{
+					$normalProductsCount++;
+				}
+				else
+				{
+					$digitalProductsCount++;
+				}
+				break;
+		}
+	}
+
+	/*if ($_SERVER['REMOTE_ADDR'] == )
+	{
+
+	}*/
+
+	// make sure we dont charge for shipping if we only have digital products in the cart
+	if ($normalProductsCount == 0)
+	{
+		$this->EE->cartthrob->cart->set_shipping(0);
+		$this->EE->cartthrob->cart->save();
+	}
+
+	if (count($products) == 0) {$this->EE->functions->redirect('/buy/cart');}
+
+
+	if (isset($_POST['form_submitted']))
+	{
+
+		debugLogAdd("\n".'--------------- START VALIDATION '.$unique_identifier.'---------------');
+		$formProceed = 1;
+		
+		
+		// Shipping Validation
+
+		if ($normalProductsCount != 0)
+		{
+			if (empty($_POST['shipping_first_name'])) {$formProceed = 0; $error['shipping_first_name'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_first_name', $_POST['shipping_first_name']);}
+			if (empty($_POST['shipping_last_name'])) {$formProceed = 0; $error['shipping_last_name'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_last_name', $_POST['shipping_last_name']);}
+			if (empty($_POST['shipping_address'])) {$formProceed = 0; $error['shipping_address'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_address', $_POST['shipping_address']);}
+			if (empty($_POST['shipping_city'])) {$formProceed = 0; $error['shipping_city'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_city', $_POST['shipping_city']);}
+			if (empty($_POST['shipping_country'])) {$formProceed = 0; $error['shipping_country'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_country', $_POST['shipping_country']);}
+			if ($_POST['shipping_country'] == 'US' or $_POST['shipping_country'] == '')
+			{
+				if (empty($_POST['shipping_state'])) {$formProceed = 0; $error['shipping_state'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_state', $_POST['shipping_state']);}
+			}
+			else{
+				if ($_POST['shipping_country'] == 'CA')
+				{
+					if (empty($_POST['shipping_province'])) {$formProceed = 0; $error['shipping_province'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_state', $_POST['shipping_province']);}
+				}
+
+				$this->EE->cartthrob->cart->set_customer_info('shipping_state', $_POST['shipping_province']);
+			}
+
+			if (empty($_POST['shipping_zip'])) {$formProceed = 0; $error['shipping_zip'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('shipping_zip', $_POST['shipping_zip']);}
+		}
+
+		if ($_POST['same_as_shipping'] == 'yes')
+		{
+			$this->EE->cartthrob->cart->set_custom_data("same_as_shipping",'yes');
+		}
+		else
+		{
+			// Billing Validation
+			if (empty($_POST['first_name'])) {$formProceed = 0; $error['first_name'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('first_name', $_POST['first_name']);}
+			if (empty($_POST['last_name'])) {$formProceed = 0; $error['last_name'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('last_name', $_POST['last_name']);}
+			if (empty($_POST['address'])) {$formProceed = 0; $error['address'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('address', $_POST['address']);}
+			if (empty($_POST['city'])) {$formProceed = 0; $error['city'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('city', $_POST['city']);}
+			if (empty($_POST['zip'])) {$formProceed = 0; $error['zip'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('zip', $_POST['zip']);}
+			if (empty($_POST['country'])) {$formProceed = 0; $error['country'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('country', $_POST['country']);}
+			if ($_POST['country'] == 'US')
+			{
+				if (empty($_POST['state'])) {$formProceed = 0; $error['state'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('state', $_POST['state']);}
+			}
+			else
+			{
+				if ($_POST['country'] == 'CA')
+				{
+					if (empty($_POST['province'])) {$formProceed = 0; $error['province'] = '<span class="form_error">Required</span>';}else{$this->EE->cartthrob->cart->set_customer_info('state', $_POST['province']);}
+				}
+
+				$this->EE->cartthrob->cart->set_customer_info('state', $_POST['province']);
+			}
+		}
+
+		if (empty($_POST['shipping_method_input']) and $normalProductsCount != 0)
+		{
+			$error['shipping_selection'] = '<span class="checkout_error">Click "Calculate Rates" below and select a shipping method</span>';
+			$formProceed = 0;
+		}
+
+		// Require valid email
+		if (empty($_POST['email_address'])) 
+		{
+			$formProceed = 0; 
+			$error['email_address'] = '<span class="form_error">Required</span>';
+		}
+		else if (!is_valid_email($_POST['email_address']))
+		{
+			$formProceed = 0; 
+			$error['email_address'] = '<span class="form_error">Please enter a valid email address.</span>';
+		}
+
+		// Account Validation
+		if (!$this->EE->session->userdata('member_id') && ($digitalProductsCount != 0 OR 'yes' == $_POST['create_account']))
+		{
+			if ($_POST['account_password'] == '')
+			{
+				$formProceed = 0; 
+				$error['account_password'] = '<span class="form_error">Required</span>';
+			}
+			else
+			{
+				if (strlen($_POST['account_password']) <= 5)
+				{
+					$formProceed = 0; 
+					$error['account_password'] = '<span class="form_error">Password must be at least 6 characters long</span>';
+				}
+
+				if ($_POST['confirm_account_password'] != $_POST['account_password'])
+				{
+					$formProceed = 0; 
+					$error['confirm_account_password'] = '<span class="form_error">Passwords do not match</span>';
+				}
+			}
+		}
+
+
+		// CC Validation
+		if ($_POST['payment_method'] == 'authorize')
+		{
+			if (empty($_POST['CVV2'])) {$formProceed = 0; $error['CVV2'] = '<span class="form_error">Required</span>';}
+			if (empty($_POST['credit_card_number'])) {$formProceed = 0; $error['credit_card_number'] = '<span class="form_error">Required</span>';}
+			if (empty($_POST['expiration_month'])) {$formProceed = 0; $error['expiration_month'] = '<span class="checkout_error">Expiration Month is required</span>';}
+			if (empty($_POST['expiration_year'])) {$formProceed = 0; $error['expiration_year'] = '<span class="checkout_error">Expiration Year is required</span>';}
+		}
+
+		if ($formProceed == 1)
+		{
+			debugLogAdd('--------------- PASSED Form Validation ---------------');
+			$this->EE->cartthrob->cart->set_custom_data("unique_identifier",$unique_identifier);
+			// *************************************************************************
+			// Load Authorize.net settings
+			// *************************************************************************
+			$post_url = "https://test.authorize.net/gateway/transact.dll";
+			$sql = "SELECT value FROM exp_cartthrob_settings WHERE exp_cartthrob_settings.key = 'Cartthrob_authorize_net_settings'";
+			$query = $this->EE->db->query($sql);
+			if($query) {
+				$row = $query->row();
+				$value = unserialize($row->value);
+
+				if($value["mode"] == "developer" || $_SERVER['REMOTE_ADDR'] == '173.164.72.169') {
+					// $apiLogin = $value["api_login"];
+					// $transactionKey = $value["transaction_key"];
+					// $post_url = "https://secure.authorize.net/gateway/transact.dll";
+					$apiLogin = $value["dev_api_login"];
+					$transactionKey = $value["dev_transaction_key"];
+					$post_url = "https://test.authorize.net/gateway/transact.dll";
+				}
+				else {
+					$apiLogin = $value["api_login"];
+					$transactionKey = $value["transaction_key"];
+					$post_url = "https://secure.authorize.net/gateway/transact.dll";
+				}
+			}
+
+			// *************************************************************************
+			// Get all items in cart and then remove the Try-On items so they
+			// can be processed separetely
+			// *************************************************************************
+
+			$this->EE->cartthrob->cart->save();
+			$products = $this->EE->cartthrob->cart->items_array();
+
+			$group_id = 1;
+
+			// *************************************************************************
+			// LOGIN USER OR CREATE USER BASED ON EMAIL ADDRESS
+			// *************************************************************************
+			if (!$this->EE->session->userdata('member_id')) {
+				debugLogAdd('--------------- Member is not logged ---------------');
+				$sqlCheckDuplicate = "select * from exp_members where username = '".mysql_real_escape_string($_POST['email_address'])."'";
+				$queryCheckDuplicate = $this->EE->db->query($sqlCheckDuplicate);
+				$arrayCheckDuplicate = $queryCheckDuplicate->result_array();
+
+				if (count($arrayCheckDuplicate) != 0)
+				{
+					debugLogAdd('--------------- Member exists ... logging in user ---------------');
+					$guestCheckout = 1;
+					$this->EE->cartthrob_members_model->login_member($arrayCheckDuplicate[0]['member_id']);
+					$update_addresses = TRUE;
+				}
+				else
+				{
+
+					if ($digitalProductsCount != 0 )
+					{
+						$account_password = $_POST['account_password'];
+					}
+					elseif ('yes' == $_POST['create_account']) {
+						$account_password = $_POST['account_password'];
+					}
+					else
+					{
+						$account_password = md5(time());
+					}
+
+					$data = array(
+						'username' =>  $_POST['email_address'],
+						'email' => $_POST['email_address'],
+						'screen_name' => $_POST['email_address'],
+						'group_id' => 5,
+						'password' => $account_password
+					);
+
+
+					$create_member_id = $this->EE->cartthrob_members_model->create_member($data);
+					debugLogAdd('--------------- Member doesn\'t exist ... created user: '.$create_member_id.' ---------------');
+					debugLogAdd('--------------- Member doesn\'t exist ... created user: '.json_encode($data).' ---------------');
+
+
+					if (is_array($create_member_id)) {
+
+						$error_username = $create_member_id[0];
+					}
+					else
+					{
+						debugLogAdd('--------------- Logging in user ---------------');
+						$this->EE->cartthrob_members_model->login_member($create_member_id);
+
+						$update_addresses = TRUE;
+					}
+
+				}
+			}
+
+			$member_id = $this->EE->session->userdata('member_id');
+			$memberInfo = $this->EE->member_model->get_all_member_data($member_id);
+			$memberData = $this->EE->member_model->get_member_data($member_id);
+			$memberInfoArray = $memberInfo->result_array();
+			$memberDataArray = $memberData->result_array();
+			
+			if (TRUE OR $update_addresses)
+			{
+
+				// set shipping and billing address
+				$member_fields = array(
+					'shipping_first_name' => 12,
+					'shipping_last_name' => 13,
+					'shipping_address' => 14,
+					'shipping_city' => 16,
+					'shipping_state' => 17,
+					'shipping_province' => 20,
+					'shipping_zip' => 18,
+					'shipping_country' => 19,
+					'first_name' => 3,
+					'last_name' => 4,
+					'address' => 5,
+					'city' => 7,
+					'state' => 8,
+					'province' => 9,
+					'zip' => 10,
+					'country' => 11
+				);
+
+				$data = array('member_id' => $member_id);
+				foreach ($member_fields as $field => $m_field_id)
+				{
+					if ('' == $memberInfoArray[0]['m_field_id_' . $m_field_id] && '' != $_POST[$field])
+					{
+						$data['m_field_id_' . $m_field_id] = $_POST[$field];
+						if ('address' == substr($field, -7))
+						{
+							$data['m_field_id_' . ($m_field_id + 1)] = $_POST[$field . '2'];
+						}
+					}
+				}
+
+				$msg = print_r($data, TRUE);
+				$msg .= "\n\n\n";
+				$msg .= print_r($memberInfoArray[0], TRUE);
+				$msg .= "\n\n\n";
+				$msg = print_r($_POST, TRUE);
+				// mail('david.advocaat@adpearance.com', 'debug update member addresses', $msg);
+
+				$this->EE->member_model->update_member_data($member_id, $data);
+			}
+			
+
+			// *************************************************************************
+			// Check to see if the billing address is the same
+			// as the shipping address.
+			// *************************************************************************
+
+			if($this->EE->cartthrob->cart->custom_data("same_as_shipping") == 'yes') {
+				$firstName = $this->EE->cartthrob->cart->customer_info("shipping_first_name");
+				$lastName = $this->EE->cartthrob->cart->customer_info("shipping_last_name");
+				$address = $this->EE->cartthrob->cart->customer_info("shipping_address");
+				$address2 = $this->EE->cartthrob->cart->customer_info("shipping_address2");
+				$city = $this->EE->cartthrob->cart->customer_info("shipping_city");
+				$state = $this->EE->cartthrob->cart->customer_info("shipping_state");
+				$province = $this->EE->cartthrob->cart->customer_info("shipping_province");
+				$zip = $this->EE->cartthrob->cart->customer_info("shipping_zip");
+				$country = $this->EE->cartthrob->cart->customer_info("shipping_country");
+			}
+			else {
+				$firstName = $_POST["first_name"];
+				$lastName = $_POST["last_name"];
+				$address = $_POST["address"];
+				$address2 = $_POST["address2"];
+				$city = $_POST["city"];
+				$state = $_POST["state"];
+				$province = $_POST["province"];
+				$zip = $_POST["zip"];
+				$country = $_POST['country'];
+			}
+
+			$orderShippingMethod = $_POST['orderShippingMethod'];
+			$this->EE->cartthrob->cart->set_custom_data("shipping_method_name" ,$orderShippingMethod);
+			// *************************************************************************
+			// Prepare values for authorize.net
+			// *************************************************************************
+
+			$post_values = array(
+				"x_login" => $apiLogin,
+				"x_tran_key" => $transactionKey,
+				"x_version" => "3.1",
+				"x_delim_data" => "TRUE",
+				"x_delim_char" => "|",
+				"x_relay_response" => "FALSE",
+				"x_method" => "CC",
+				"x_card_num" => $_POST["credit_card_number"],
+				"x_exp_date" => $_POST["expiration_month"].substr($_POST["expiration_year"],2),
+				"x_first_name" => $firstName,
+				"x_last_name" => $lastName,
+				"x_address" => $address,
+				"x_state" => $state,
+				"x_zip" => $zip
+			);
+
+
+			// *************************************************************************
+			// We need to make sure the user has been created
+			// *************************************************************************
+			if(!$error_username) {
+				debugLogAdd('--------------- Passed Member Validation ---------------');
+				// *************************************************************************
+				// First process the Purchase items.  Loop through the items
+				// and add them to the line item list.  Since the price of purchased items
+				// can be influenced by discounts do not use the price of the item.  Instead
+				// use the cart which now only contains purchased line items
+				// *************************************************************************
+					$totalPriceForEmail = money_format('%i', $this->EE->cartthrob->cart->total());
+					$subtotalPriceForEmail = money_format('%i', $this->EE->cartthrob->cart->subtotal());
+	
+					$totalPrice = 0;
+					foreach($products as $keyProducts => $valProducts)
+					{
+						if (str_replace(' ', '', strtolower($valProducts['item_options']['purchase_type'])) == 'instock' || $valProducts['item_options']['purchase_type'] == 'Bundle')
+						{
+							$instock[$keyProducts] = $valProducts;
+							$totalPrice += $valProducts['price']*$valProducts['quantity'];
+						}
+						else
+						{
+							//$this->EE->cartthrob->cart->remove_item($keyProducts);
+							//$backorder[$keyProducts] = $valProducts;
+						}
+					}
+
+					$totalWithShipping = $totalPrice +  $this->EE->cartthrob->cart->shipping() - $this->EE->cartthrob->cart->discount();
+
+					$post_values["x_type"] = "AUTH_CAPTURE";
+                    $post_values["x_description"] = "Customer purchase via beyondwords.com website";
+                    $post_values["x_amount"] = $totalWithShipping;
+
+                    $post_string = "";
+					if (is_array($post_values))
+					{
+						foreach( $post_values as $key => $value ) {
+							$post_string .= "$key=" . urlencode( $value ) . "&";
+						}
+					}
+                    $post_string = rtrim( $post_string, "& " );
+
+					if (is_array($line_items))
+					{
+						foreach( $line_items as $value ) {
+							$post_string .= "&x_line_item=" . urlencode( $value );
+						}
+					}
+					
+					
+					debugLogAdd('--------------- Total Cart request is: '.$totalWithShipping.' ---------------');
+					if ($totalWithShipping != 0)
+					{
+						
+						if ($_POST['payment_method'] == 'paypal')
+						{
+							debugLogAdd('--------------- Doing paypal order entry ---------------');
+							$auth['authorized'] = TRUE;
+							$auth['failed']	= FALSE;
+							$auth['transaction_id'] = '';
+							$auth['authorization_code'] = '';
+
+							$orderStatus = "Open - paypal pending";
+
+						}
+						else
+						{
+							debugLogAdd('--------------- Doing auth request ---------------');
+							$request = curl_init($post_url); // initiate curl object
+							curl_setopt($request, CURLOPT_HEADER, 0);
+							curl_setopt($request, CURLOPT_RETURNTRANSFER, 1);
+							curl_setopt($request, CURLOPT_POSTFIELDS, $post_string);
+							curl_setopt($request, CURLOPT_SSL_VERIFYPEER, FALSE);
+							$post_response = curl_exec($request);
+							
+							curl_close ($request); // close curl object
+
+							$response = explode($post_values["x_delim_char"],$post_response);
+							$orderStatus = "Closed";
+							$auth['authorized'] = FALSE;
+							$auth['declined'] = FALSE;
+							$auth['transaction_id']	= NULL;
+							$auth['processing'] = FALSE;
+							$auth['failed']	= TRUE;
+							$auth['error_message'] = "";
+
+							switch($response[0]) {
+								case 1:
+									$auth['authorized'] = TRUE;
+									$auth['failed']	= FALSE;
+									$auth['transaction_id'] = @$response[6];
+									$auth['authorization_code'] = @$response[4];
+
+									$orderStatus = "Open";
+
+									if (!empty($response[4])) {
+										//$this->update_order(array('authorization_id' => $response[4]));
+									}
+								break;
+								case 2:
+									$auth['authorized'] = FALSE;
+									$auth['declined'] = TRUE;
+									$auth['transaction_id']	= NULL;
+									$auth['failed']	= FALSE;
+									$auth['error_message']	= @$response[3];
+
+									$orderStatus = "Payment Declined";
+
+									$error_transaction = "Payment Declined";
+								break;
+								case 3:
+										$auth['authorized']	= FALSE;
+										$auth['declined'] = FALSE;
+										$auth['transaction_id'] = NULL;
+										$auth['failed'] = TRUE;
+										$auth['error_message'] = @$response[3];
+
+										$orderStatus = "Payment Failed";
+
+										$error_transaction = "Payment Failed";
+								break;
+								case 4:
+									if ($response[2] == "252" || $response[2]== "253") {
+										$auth['authorized'] = FALSE;
+										$auth['processing']	= TRUE;
+										$auth['failed'] = FALSE;
+										$auth['error_message'] = @$response[3];
+										$auth['transaction_id'] = @$response[6];
+
+										$orderStatus = "Payment Pending";
+
+										if (!empty($response[4])) {
+											//$this->update_order(array('authorization_id' => $response[4]));
+										}
+									}
+									else {
+										$auth['authorized']	= FALSE;
+										$auth['declined'] = FALSE;
+										$auth['transaction_id'] = NULL;
+										$auth['failed'] = TRUE;
+										$auth['error_message'] = @$response[3];
+
+										$error_transaction = @$response[3];
+									}
+								break;
+								default:
+									$auth['failed'] = TRUE;
+									$error_transaction = "There Was A Problem Connecting To Authorize.net. Error" . $response[3];
+							}
+						}
+					}
+					else
+					{
+						debugLogAdd('--------------- Skipping auth request ---------------');
+						$auth['authorized'] = TRUE;
+						$auth['failed']	= FALSE;
+						$orderStatus = "Open";
+					}
+				
+				if ($auth['authorized'] == TRUE)
+				{
+					foreach($products as $keyProducts => $valProducts)
+					{
+						unset($purchase_type);
+						$purchase_type = str_replace(' ','',strtolower(preg_replace("/[^A-Za-z0-9]/", "", $valProducts['item_options']['purchase_type'])));
+
+						if ($purchase_type == 'bundle')
+						{
+							foreach($valProducts['item_options']['bundle_options'] as $keyBundle => $valBundle)
+							{
+								$this->EE->cartthrob->cart->add_item(array(
+									'product_id' => $valBundle['entry_id'],
+									'price' => (($valBundle['sales_price'] != '' and $valBundle['sales_price'] != 0)?$valBundle['sales_price']:$valBundle['price']),
+									'weight' => $valBundle['weight'],
+									'title' => $valBundle['title'],
+									'item_options' => array(
+										'option_value' => $valBundle['option_value'],
+										'option_name' => $valBundle['option_name'],
+										'purchase_type' => $valProducts['item_options']['purchase_type'],
+										'product_type' => $valProducts['item_options']['product_type'],
+										'product_isbn10' => $valBundle['isbn10'], 
+										'product_isbn13' => $valBundle['isbn13'],
+										'product_sku' => $valBundle['option_value'],
+										'product_upc' => $valBundle['upc']
+									),
+									'inventory' => '',
+									'quantity' => $valProducts['quantity'],
+									'class' => 'product'	
+								));
+							}
+							$this->EE->cartthrob->cart->remove_item($keyProducts);
+						}
+						elseif ($purchase_type == 'instock')
+						{
+							//leave instock alone
+						}
+						else
+						{
+							$this->EE->cartthrob->cart->remove_item($keyProducts);
+							$backorder[$keyProducts] = $valProducts;
+						}
+					}
+
+					$this->EE->cartthrob->cart->save();
+
+					debugLogAdd('--------------- Passed Initial Card Validation ---------------');
+					$vars = array(
+							'shipping' => $this->EE->cartthrob->cart->shipping(),
+							'shipping_plus_tax' => $this->EE->cartthrob->cart->shipping_plus_tax(),
+							'tax' => $this->EE->cartthrob->cart->tax(),
+							'subtotal' => $totalPrice,
+							'subtotal_plus_tax' => $totalPrice,
+							'discount' => $this->EE->cartthrob->cart->discount(),
+							'total' => $totalWithShipping,
+							'credit_card_number' => '',
+							'create_member_id' => $this->EE->session->userdata('member_id'),
+							'group_id' =>  $group_id,
+							'subscription' => FALSE,
+							'subscription_options' => FALSE,
+							'payment_gateway' => 'Cartthrob_authorize_net',
+							);
+
+					$shipping = NULL;
+					$shipping_plus_tax = NULL;
+					$tax = NULL;
+					$subtotal = NULL;
+					$subtotal_plus_tax = NULL;
+					$discount = NULL;
+					$total = NULL;
+					$credit_card_number = NULL;
+					$create_member_id = NULL;
+					$group_id = NULL;
+					$subscription = array();
+					$subscription_options = array();
+					$payment_gateway = NULL;
+
+					extract($vars, EXTR_IF_EXISTS);
+
+					$this->EE->cartthrob->cart->set_calculation_caching(FALSE);
+					if (empty($total))
+					{
+							$total = $totalWithShipping;
+					}
+					if (empty($tax))
+					{
+							$tax = $this->EE->cartthrob->cart->tax();
+					}
+					if (empty($discount))
+					{
+							$discount = $this->EE->cartthrob->cart->discount();
+					}
+					if (empty($shipping))
+					{
+							$shipping = $this->EE->cartthrob->cart->shipping();
+					}
+					if (empty($shipping_plus_tax))
+					{
+							$shipping_plus_tax = $this->EE->cartthrob->cart->shipping_plus_tax();
+					}
+					if (empty($subtotal))
+					{
+							$subtotal = $totalPrice;
+					}
+					if (empty($subtotal_plus_tax))
+					{
+							$subtotal_plus_tax = $totalPrice;
+					}
+
+					$this->EE->cartthrob->cart->set_custom_data("card_expiration" ,$_POST['expiration_month'].'-'.$_POST['expiration_year']);
+					$this->EE->cartthrob->cart->set_custom_data("card_type", CreditCardCompany($_POST['credit_card_number']));
+
+					$order_dataInstock = array(
+						'items' => array(),
+						'transaction_id' => (isset($auth['transaction_id'])) ? $auth['transaction_id'] : '0',
+						'error_message' => (isset($auth['error_message'])) ? $auth['error_message'] : '',
+						'shipping_method' => $orderShippingMethod,
+						'shipping' => $this->EE->cartthrob->round($shipping),
+						'shipping_plus_tax' => $this->EE->cartthrob->round($shipping_plus_tax),
+						'tax' => $this->EE->cartthrob->round($tax),
+						'subtotal' => $this->EE->cartthrob->round($subtotal),
+						'subtotal_plus_tax' => $this->EE->cartthrob->round($subtotal_plus_tax),
+						'discount' => $this->EE->cartthrob->round($discount),
+						'total' => $this->EE->cartthrob->round($totalWithShipping),
+						'customer_name' => $firstName.' '.$lastName,
+						'customer_email' => $_POST['email_address'],
+						'customer_ip_address' => $this->EE->input->ip_address(),
+						'ip_address' => $this->EE->input->ip_address(),
+						'customer_phone' => $this->EE->cartthrob->cart->customer_info('phone'),
+						'coupon_codes' => implode(',', $this->EE->cartthrob->cart->coupon_codes()),
+						'coupon_codes_array' => $this->EE->cartthrob->cart->coupon_codes(),
+						'last_four_digits' => substr($_POST['credit_card_number'],-4,4),
+						'full_billing_address' => $address."\r\n".
+												  $address2."\r\n".
+												  $city.', '.$state.' '.$zip.' '.$country,
+						'full_shipping_address' => $this->EE->cartthrob->cart->customer_info('shipping_address')."\r\n".
+												   ($this->EE->cartthrob->cart->customer_info('shipping_address2') ? $this->EE->cartthrob->cart->customer_info('shipping_address2')."\r\n" : '').
+													$this->EE->cartthrob->cart->customer_info('shipping_city').', '.$this->EE->cartthrob->cart->customer_info('shipping_state').' '.$this->EE->cartthrob->cart->customer_info('shipping_zip').' '.$this->EE->cartthrob->cart->customer_info('shipping_country'),
+						'billing_first_name' => $firstName,
+						'billing_last_name' => $lastName,
+						'billing_company' => '',
+						'billing_address' => $address,
+						'billing_address2' => $address2,
+						'billing_city' => $city,
+						'billing_state' => $state,
+						'billing_zip' => $zip,
+						'billing_country' => $country,
+						'billing_country_code' => '',
+						'entry_id' => '',
+						'order_id' => '',
+						'total_cart' => $this->EE->cartthrob->round($totalWithShipping),
+						'auth' => $auth,
+						'purchased_items' => array(),
+						'create_user' => ( ! empty($create_member_id)) ? $create_member_id : FALSE,
+						'member_id' => ( ! empty($create_member_id)) ? $create_member_id :  $this->EE->session->userdata('member_id'),
+						'group_id' => ( ! empty($group_id)) ? $group_id :  $this->EE->session->userdata('group_id'),
+						'authorized_redirect' => $this->EE->input->post('authorized_redirect', TRUE),
+						'failed_redirect' => $this->EE->input->post('failed_redirect', TRUE),
+						'declined_redirect' => $this->EE->input->post('declined_redirect', TRUE),
+						'return' => ($this->EE->input->post('return')) ? $this->EE->input->post('return', TRUE) : $this->EE->functions->fetch_site_index(1),
+						'site_name' => $this->EE->config->item('site_name'),
+						'custom_data' => $this->EE->cartthrob->cart->custom_data(),
+						'subscription'	=> $subscription,
+						'subscription_options' => $subscription_options,
+						'payment_gateway' => (strncmp($payment_gateway, 'Cartthrob_', 10) === 0) ? substr($payment_gateway, 10) : $payment_gateway
+					);
+
+                    foreach ($this->EE->cartthrob->cart->items() as $row_id => $item) {
+						$row = $item->to_array();
+						$order_dataInstock['items'][$row_id] = $row;
+                    }
+
+                    $isostatus = ($_POST['payment_method'] == 'paypal')?'Open - paypal pending':'open';
+		
+					$this->EE->cartthrob->store->set_config('orders_processing_status', $isostatus);
+					$order_dataInstock = array_merge($order_dataInstock, $this->EE->cartthrob->cart->customer_info());
+					$_SESSION['order_data_instock'] = base64_encode(serialize($order_dataInstock));
+					$order_entry = $this->EE->order_model->create_order($order_dataInstock);
+					//mail('laurentiu.iovan@adpearance.com', 'test1', json_encode($order_entry));
+					// send order to InfusionSoft
+					/*require_once PATH_THIRD . 'ad_infusionsoft/ext.ad_infusionsoft.php';
+					$if_ext = new Ad_infusionsoft_ext();
+					$if_ext->export_order($order_entry);
+
+					*/
+					$order_id = $this->EE->cartthrob->cart->order('order_id');
+					$last_order_number = $this->EE->cartthrob->store->config('last_order_number');
+					$order_dataInstock['order_id'] = $last_order_number+1;
+					$order_dataInstock['order_id_test'] = $order_id;
+					
+					debugLogAdd('--------------- Instock Order created ---------------');
+					$this->EE->cartthrob->cart->set_order($order_dataInstock);
+
+				
+					
+					if (count($backorder) > 0)
+					{
+						debugLogAdd('--------------- Has backorder / preorder items ---------------');
+						require $_SERVER['DOCUMENT_ROOT'].'/templates/includes/cim/authorizenet.cim.class.php';
+						$proceedWithOrderCreation = 1;
+						if ($_POST['payment_method'] == 'authorize')
+						{
+							if ($memberInfoArray[0]['m_field_id_2'] == '')
+							{
+								debugLogAdd('--------------- Member doesnt have CIM profile ---------------');
+								$cim = new AuthNetCim($apiLogin, $transactionKey, false);
+								$cim->setParameter('paymentType', 'creditCard');
+								$cim->setParameter('cardNumber', $_POST['credit_card_number']);
+								$cim->setParameter('expirationDate', $_POST['expiration_year'].'-'.$_POST['expiration_month']);
+								$cim->setParameter('billTo_firstName', $firstName);
+								$cim->setParameter('billTo_lastName', $lastName);
+								$cim->setParameter('billTo_address', $address);
+								$cim->setParameter('billTo_city', $city);
+								if ($country == 'US')
+								{
+									$cim->setParameter('billTo_state', $state);
+								}
+								$cim->setParameter('billTo_zip', $zip);
+								$cim->setParameter('billTo_country', $country);
+								$cim->setParameter('shipTo_firstName', $this->EE->cartthrob->cart->customer_info('shipping_first_name')); // Up to 50 characters (no symbols)
+								$cim->setParameter('shipTo_lastName', $this->EE->cartthrob->cart->customer_info('shipping_last_name')); // Up to 50 characters (no symbols)
+								$cim->setParameter('shipTo_address', $this->EE->cartthrob->cart->customer_info('shipping_address')); // Up to 60 characters (no symbols)
+								$cim->setParameter('shipTo_city', $this->EE->cartthrob->cart->customer_info('shipping_city')); // Up to 40 characters (no symbols)
+								if ($this->EE->cartthrob->cart->customer_info('shipping_country') == 'US')
+								{
+									$cim->setParameter('shipTo_state', $this->EE->cartthrob->cart->customer_info('shipping_state')); // A valid two-character state code (US only) (optional)
+								}
+								$cim->setParameter('shipTo_zip', $this->EE->cartthrob->cart->customer_info('shipping_zip')); // Up to 20 characters (no symbols)
+								$cim->setParameter('shipTo_country', $this->EE->cartthrob->cart->customer_info('shipping_country')); // Up to 60 characters (no symbols) (optional)
+								$cim->setParameter('merchantCustomerId', $this->EE->session->userdata('member_id')); // Up to 20 characters (optional)
+								$cim->setParameter('email', $this->EE->cartthrob->cart->customer_info('email_address')); // Up to 255 characters (optional)
+								$cim->setParameter('customerType', 'individual'); // individual or business (optional)
+								$cim->createCustomerProfileRequest();
+
+								if ($cim->isSuccessful())
+								{
+									debugLogAdd('--------------- Successfully created cim profile id:'.$cim->customerProfileId.'  ---------------');
+									debugLogAdd('--------------- Successfully paypemnt cim profile id:'.$cim->customerPaymentProfileId.'  ---------------');
+									debugLogAdd('--------------- Successfully shipping cim profile id:'.$cim->customerAddressId.'  ---------------');
+									if ($cim->customerProfileId != 0)
+									{
+										$data = array('m_field_id_2' => $cim->customerProfileId, 'member_id' => $member_id);
+										$this->EE->member_model->update_member_data($member_id, $data);
+									}
+									$this->EE->cartthrob->cart->set_custom_data("anet_customerpaymentprofileid" ,$cim->customerPaymentProfileId);
+									$this->EE->cartthrob->cart->set_custom_data("anet_customeraddressid" ,$cim->customerAddressId);
+								}
+								else
+								{
+									debugLogAdd('--------------- Errors cim profile :'.print_r($cim->error_messages, true).'  ---------------');
+									//mail('devlogin@adpearance.com', 'BW Error', $cim->text);
+									//die('failed on profile CIM creation');
+								}
+							}
+							else{
+								debugLogAdd('---------------  Member has CIM profile id stored  **'.$memberInfoArray[0]['m_field_id_2'].'**---------------');
+								/* ########## CHECK FOR DUPLICATE PAYMENT ########## */
+								$cim = new AuthNetCim($apiLogin, $transactionKey, false);
+								$cim->setParameter('customerProfileId', $memberInfoArray[0]['m_field_id_2']); // Numeric (required)
+								$cim->getCustomerProfileRequest();
+								@$profileDataArray = simplexml_load_string(substr($cim->response, strpos($cim->response, '<?xml') , strlen($cim->response)));
+								$foundPaymentId = 0;
+								$foundShippingId = 0;
+								foreach($profileDataArray->profile->paymentProfiles as $paymentProfileKey => $paymentProfileVal)
+								{
+									if (substr($paymentProfileVal->payment->creditCard->cardNumber, 4, 8) == substr($_POST['credit_card_number'], strlen($_POST['credit_card_number'])-4, strlen($_POST['credit_card_number'])))
+									{
+										$this->EE->cartthrob->cart->set_custom_data("anet_customerpaymentprofileid", $paymentProfileVal->customerPaymentProfileId);
+										$foundPaymentId = 1;
+										debugLogAdd('---------------  Found Matching payment id in CIM : '.$paymentProfileVal->customerPaymentProfileId.'---------------');
+										break;
+									}
+								}
+								
+								if (!$foundPaymentId)
+								{
+									
+									$cim = new AuthNetCim($apiLogin, $transactionKey, false);
+									$cim->setParameter('paymentType', 'creditCard');
+									$cim->setParameter('cardNumber', $_POST['credit_card_number']);
+									$cim->setParameter('expirationDate', $_POST['expiration_year'].'-'.$_POST['expiration_month']); // (YYYY-MM)
+									$cim->setParameter('billTo_firstName', $firstName);
+									$cim->setParameter('billTo_lastName', $lastName);
+									$cim->setParameter('billTo_address', $address);
+									$cim->setParameter('billTo_city', $city);
+									if ($country == 'US')
+									{
+										$cim->setParameter('billTo_state', $state);
+									}
+									$cim->setParameter('billTo_zip', $zip);
+									$cim->setParameter('billTo_country', $country);
+									$cim->setParameter('customerType', 'individual');
+									$cim->setParameter('customerProfileId', $memberInfoArray[0]['m_field_id_2']); // Numeric (required)
+									$cim->setParameter('refId', time());
+									$cim->setParameter('validationMode', 'liveMode');
+									$cim->createCustomerPaymentProfileRequest();
+
+									if ($cim->isSuccessful())
+									{
+										debugLogAdd('---------------  Didnt find matching payment profile so i created one: '.$cim->customerPaymentProfileId.' ---------------');
+										$this->EE->cartthrob->cart->set_custom_data("anet_customerpaymentprofileid" ,$cim->customerPaymentProfileId);
+									}
+									else
+									{
+										$proceedWithOrderCreation = 0;
+										$error = $cim->text;
+										debugLogAdd('---------------  Didnt find matching payment profile and creating one failed : '.print_r($cim->error_messages, true).' ---------------');
+										//mail('devlogin@adpearance.com', 'BW Error', $cim->text);
+									}
+								}
+								foreach($profileDataArray->profile->shipToList as $shippingProfileKey => $shippingProfileVal)
+								{
+
+									if (
+										$shippingProfileVal->firstName == $this->EE->cartthrob->cart->customer_info('shipping_first_name') and
+										$shippingProfileVal->lastName == $this->EE->cartthrob->cart->customer_info('shipping_last_name') and
+										$shippingProfileVal->address == $this->EE->cartthrob->cart->customer_info('shipping_address') and
+										$shippingProfileVal->zip == $this->EE->cartthrob->cart->customer_info('shipping_zip'))
+									{
+
+										$this->EE->cartthrob->cart->set_custom_data("anet_customeraddressid", $shippingProfileVal->customerAddressId);
+										$foundShippingId = 1;
+										debugLogAdd('---------------  Found Matching Shipping Id in CIM: '.$shippingProfileVal->customerAddressId.' ---------------');
+										break;
+									}
+								}
+
+								if (!$foundShippingId)
+								{
+									$cim = new AuthNetCim($apiLogin, $transactionKey, false);
+									$cim->setParameter('shipTo_firstName', $this->EE->cartthrob->cart->customer_info('shipping_first_name'));
+									$cim->setParameter('shipTo_lastName', $this->EE->cartthrob->cart->customer_info('shipping_last_name'));
+									$cim->setParameter('shipTo_address', $this->EE->cartthrob->cart->customer_info('shipping_address'));
+									$cim->setParameter('shipTo_city', $this->EE->cartthrob->cart->customer_info('shipping_city'));
+									if ($this->EE->cartthrob->cart->customer_info('shipping_country'))
+									{
+										$cim->setParameter('shipTo_state', $this->EE->cartthrob->cart->customer_info('shipping_state'));
+									}
+									$cim->setParameter('shipTo_zip', $this->EE->cartthrob->cart->customer_info('shipping_zip'));
+									$cim->setParameter('shipTo_country', $this->EE->cartthrob->cart->customer_info('shipping_country'));
+									$cim->setParameter('customerProfileId', $memberInfoArray[0]['m_field_id_2']); // Numeric (required)
+
+									$cim->createCustomerShippingAddressRequest();
+
+									if ($cim->isSuccessful())
+									{
+										$this->EE->cartthrob->cart->set_custom_data("anet_customeraddressid" ,$cim->customerAddressId);
+										debugLogAdd('---------------  Didnt Find Matching Shipping Id so i created one: '.$cim->customerAddressId.' ---------------');
+									}
+									else
+									{
+										//mail('devlogin@adpearance.com', 'BW Error', $cim->text);
+										debugLogAdd('---------------  Failed on creating a shipping CIM profile : '.print_r($cim->error_messages, true).' ---------------');
+										$proceedWithOrderCreation = 0;
+										$error = $cim->text;
+									}
+								}
+							}
+						}
+						else
+						{
+							$proceedWithOrderCreation = 1;
+						}
+						if ($proceedWithOrderCreation == 1)
+						{
+							debugLogAdd('---------------  We have all the CIM ids required ... creating the order ---------------');
+							if ($_POST['payment_method'] == 'authorize')
+							{
+								$data = array('m_field_id_2' => $cim->customerProfileId, 'member_id' => $member_id);
+								$this->EE->member_model->update_member_data($member_id, $data);
+							}
+
+							$totalPriceBackorder = 0;
+
+							$this->EE->cartthrob->cart->clear();
+							$this->EE->cartthrob->cart->save();
+
+							foreach($backorder as $item) {
+								$this->EE->cartthrob->cart->add_item($item);
+								$this->EE->cartthrob->cart->save();
+								$totalPriceBackorder += (
+									(	array_key_exists('sales_price', $item) && 
+										!empty($item['sales_price'])
+									)?$item['sales_price']:$item['price']) * $item['quantity'];
+							}
+
+							$this->EE->cartthrob->cart->set_custom_data("card_expiration" ,$_POST['expiration_month'].'-'.$_POST['expiration_year']);
+							$this->EE->cartthrob->cart->set_custom_data("card_type", CreditCardCompany($_POST['credit_card_number']));
+
+							$order_data = array(
+								'items' => array(),
+								'transaction_id' => (isset($auth['transaction_id'])) ? $auth['transaction_id'] : '0',
+								'error_message' => (isset($auth['error_message'])) ? $auth['error_message'] : '',
+								'shipping' => 0,
+								'shipping_plus_tax' => 0,
+								'shipping_method' => $orderShippingMethod,
+								'tax' => $this->EE->cartthrob->round($tax),
+								'subtotal' => $this->EE->cartthrob->round($totalPriceBackorder),
+								'subtotal_plus_tax' => $this->EE->cartthrob->round($totalPriceBackorder),
+								'discount' => $this->EE->cartthrob->round($discount),
+								'total' => $this->EE->cartthrob->round($totalPriceBackorder),
+								'customer_name' => $firstName.' '.$lastName,
+								'customer_email' => $this->EE->cartthrob->cart->customer_info('email_address'),
+								'customer_ip_address' => $this->EE->input->ip_address(),
+								'ip_address' => $this->EE->input->ip_address(),
+								'customer_phone' => $this->EE->cartthrob->cart->customer_info('phone'),
+								'coupon_codes' => implode(',', $this->EE->cartthrob->cart->coupon_codes()),
+								'coupon_codes_array' => $this->EE->cartthrob->cart->coupon_codes(),
+								'last_four_digits' => substr($_POST['credit_card_number'],-4,4),
+								'full_billing_address' => $address."\r\n".
+														  $address2."\r\n".
+														  $city.', '.$state.' '.$zip.' '.$country,
+								'full_shipping_address' => $this->EE->cartthrob->cart->customer_info('shipping_address')."\r\n".
+														   ($this->EE->cartthrob->cart->customer_info('shipping_address2') ? $this->EE->cartthrob->cart->customer_info('shipping_address2')."\r\n" : '').
+															$this->EE->cartthrob->cart->customer_info('shipping_city').', '.$this->EE->cartthrob->cart->customer_info('shipping_state').' '.$this->EE->cartthrob->cart->customer_info('shipping_zip').' '.$this->EE->cartthrob->cart->customer_info('shipping_country'),
+								'billing_first_name' => $firstName,
+								'billing_last_name' => $lastName,
+								'billing_company' => '',
+								'billing_address' => $address,
+								'billing_address2' => $address2,
+								'billing_city' => $city,
+								'billing_state' => $state,
+								'billing_zip' => $zip,
+								'billing_country' => $country,
+								'billing_country_code' => '',
+								'entry_id' => '',
+								'order_id' => '',
+								'total_cart' => $this->EE->cartthrob->round($totalWithShipping),
+								'auth' => $auth,
+								'purchased_items' => array(),
+								'create_user' => ( ! empty($create_member_id)) ? $create_member_id : FALSE,
+								'member_id' => ( ! empty($create_member_id)) ? $create_member_id :  $this->EE->session->userdata('member_id'),
+								'group_id' => ( ! empty($group_id)) ? $group_id :  $this->EE->session->userdata('group_id'),
+								'authorized_redirect' => $this->EE->input->post('authorized_redirect', TRUE),
+								'failed_redirect' => $this->EE->input->post('failed_redirect', TRUE),
+								'declined_redirect' => $this->EE->input->post('declined_redirect', TRUE),
+								'return' => ($this->EE->input->post('return')) ? $this->EE->input->post('return', TRUE) : $this->EE->functions->fetch_site_index(1),
+								'site_name' => $this->EE->config->item('site_name'),
+								'custom_data' => $this->EE->cartthrob->cart->custom_data(),
+								'subscription'	=> $subscription,
+								'subscription_options' => $subscription_options,
+								'payment_gateway' => (strncmp($payment_gateway, 'Cartthrob_', 10) === 0) ? substr($payment_gateway, 10) : $payment_gateway
+							);
+
+							if ($_POST['payment_method'] == 'authorize')
+							{
+								$this->EE->cartthrob->store->set_config('orders_processing_status', "Backorder");
+							}
+							else
+							{
+								$this->EE->cartthrob->store->set_config('orders_processing_status', "Backorder - paypal pending");
+							}
+
+							$order_data = array_merge($order_data, $this->EE->cartthrob->cart->customer_info());
+
+							$order_entry = $this->EE->order_model->create_order($order_data);
+
+							$order_backorder = $order_entry;
+							$order_backorder['items'] = $backorder;
+							$_SESSION['order_backorder'] = base64_encode(serialize($order_backorder));
+
+							/*
+							// send order to InfusionSoft
+							require_once PATH_THIRD . 'ad_infusionsoft/ext.ad_infusionsoft.php';
+							$if_ext = new Ad_infusionsoft_ext();
+							$if_ext->export_order($order_entry);
+							*/
+
+							$this->EE->cartthrob->cart->set_shipping($shipping);
+							$this->EE->cartthrob->cart->save();
+
+							$this->EE->cartthrob->cart->set_order($order_data);
+
+							$order_id = $this->EE->cartthrob->cart->order('order_id');
+							
+							
+
+							$orderDataFull = array_merge($order_data, $order_dataInstock);
+
+							foreach($backorder as $backorderItemKey => $backorderItemVal)
+							{
+								$orderDataFull['items'][$backorderItemKey] = $backorderItemVal;
+							}
+
+							$orderDataFull['subtotal'] = $subtotalPriceForEmail;
+							$orderDataFull['subtotal_plus_tax'] = $subtotalPriceForEmail;
+							$orderDataFull['total'] = $totalPriceForEmail;
+
+							$order_id = $this->EE->cartthrob->cart->order('order_id');
+							$last_order_number = $this->EE->cartthrob->store->config('last_order_number');
+							$orderDataFull['order_id'] = $last_order_number+1;
+							$orderDataFull['order_id_test'] = $order_id;
+							$this->EE->cartthrob->cart->set_order($orderDataFull);
+						}
+					} // close if for backorders
+					else
+					{
+						debugLogAdd('--------------- Doest have Backordered items ---------------');
+					}
+
+					if ($_POST['payment_method'] == 'authorize')
+					{
+						$emails = $this->EE->cartthrob_emails->get_email_for_event("completed");
+
+						if (!empty($emails)) {
+							foreach ($emails as $email_content) {
+								$this->EE->cartthrob_emails->send_email($email_content,$this->EE->cartthrob->cart->order());
+							}
+						}
+
+						$this->EE->acumen->email_acumen($this->EE->cartthrob->cart->order(), ($this->EE->cartthrob->store->config('last_order_number')+1));
+
+						
+						$_SESSION['order_info'] = base64_encode(serialize($this->EE->cartthrob->cart->order()));
+
+						$this->EE->cartthrob->process_discounts();
+
+						if (isset($guestCheckout))
+						{
+							$this->EE->session->destroy();
+						}
+						debugLogAdd('--------------- Order Completed ---------------'."\n\n");
+						$this->EE->functions->redirect('/buy/thank-you');
+					}
+					else
+					{
+						$_SESSION['order_info'] = base64_encode(serialize($this->EE->cartthrob->cart->order()));
+
+						$this->EE->functions->redirect('/buy/paypal_checkout');
+					}
+				}
+			}
+		}
+		else
+		{
+			$member_id = $this->EE->session->userdata('member_id');
+			$memberInfo = $this->EE->member_model->get_all_member_data($member_id);
+			$memberData = $this->EE->member_model->get_member_data($member_id);
+			$memberInfoArray = $memberInfo->result_array();
+			$memberDataArray = $memberData->result_array();
+		}
+	}
+	else
+	{
+		$member_id = $this->EE->session->userdata('member_id');
+		$memberInfo = $this->EE->member_model->get_all_member_data($member_id);
+		$memberData = $this->EE->member_model->get_member_data($member_id);
+		$memberInfoArray = $memberInfo->result_array();
+		$memberDataArray = $memberData->result_array();
+	}
+
+	//* GET ACCOUNT VALUES AND PRE-FILL FORM FIELDS *//
+	$accountInfo = array(
+		'email_address' => $memberDataArray[0]['email'],
+		'shipping_first_name' => $memberInfoArray[0]['m_field_id_12'],
+		'shipping_last_name' => $memberInfoArray[0]['m_field_id_13'],
+		'shipping_address' => $memberInfoArray[0]['m_field_id_14'],
+		'shipping_address2' => $memberInfoArray[0]['m_field_id_15'],
+		'shipping_city' => $memberInfoArray[0]['m_field_id_16'],
+		'shipping_state' => $memberInfoArray[0]['m_field_id_17'],
+		'shipping_province' => $memberInfoArray[0]['m_field_id_20'],
+		'shipping_zip' => $memberInfoArray[0]['m_field_id_18'],
+		'shipping_country' => $memberInfoArray[0]['m_field_id_19'],
+		'first_name' => $memberInfoArray[0]['m_field_id_3'],
+		'last_name' => $memberInfoArray[0]['m_field_id_4'],
+		'address' => $memberInfoArray[0]['m_field_id_5'],
+		'address2' => $memberInfoArray[0]['m_field_id_6'],
+		'city' => $memberInfoArray[0]['m_field_id_7'],
+		'state' => $memberInfoArray[0]['m_field_id_8'],
+		'province' => $memberInfoArray[0]['m_field_id_9'],
+		'zip' => $memberInfoArray[0]['m_field_id_10'],
+		'country' => $memberInfoArray[0]['m_field_id_11']
+	);
+
+	$predefinedValues = array_merge($accountInfo, $_POST);
+	$memberId = $this->EE->session->userdata('member_id');
+
+	$stepCounter = 1;
+?>
+{embed='includes/header'}
+<!--/*
+
+<?php
+	print_r($accountInfo);
+?>
+*/-->
+<script src="//configusa.veinteractive.com/tags/A4249710/3111/41C7/BC87/28ED46AE1FD1/tag.js" type="text/javascript" async></script>
+{breadcrumbs_cart}
+<script>
+$(document).ready(function() {
+	$(".calculateRates").trigger("click"); 
+
+	$('.payment_method').bind({
+		change:function(){
+			if ($(this).val() == 'paypal')
+			{
+				$('#cc_fields').slideUp();
+			}
+			else
+			{
+				$('#cc_fields').slideDown();
+			}
+		}
+	})
+});
+
+</script>
+<div role="main" class="row">
+
+	<div class="eight columns">
+		<?
+		if (empty($memberId))
+		{
+			?>
+			<section>
+				<h2>Already have an account?</h2>
+				<p><a href="/my-account?return=/buy/checkout">Login or Register</a> for a fast and easy checkout</p>
+			</section>
+			<?
+		}
+		?>
+
+
+		<form action="" method="post" class="custom" id="checkout">
+			<input type="hidden" name="XID" value="{XID_HASH}" /> 
+			<input type="hidden" name="form_submitted" value="yes" />
+			<input type="hidden" name="form_name" value="checkout" />
+
+			<fieldset class="complete_order">
+				<h1 class="title"><?=$stepCounter++?>. Email Address</h1>
+				<div class="row">
+					<div class="nine columns">
+						<label for="address">Email Address <span class="helper">( This is where we'll send your receipt )</span></label><?=((isset($error['email_address']))?$error['email_address']:'')?>
+						<?=((isset($error_username))?'<span class="checkout_error">'.$error_username.'</span>':'')?>
+						<input type="text" name="email_address" value="<?=$predefinedValues['email_address']?>" id="address" />
+					</div>
+				</div>
+				<div class="row">
+					<div class="twelve columns cart_newsletter">
+						<input type="checkbox" name="join_newsletter" value="yes" <?=((isset($_POST['join_newsletter']))?'checked':'')?>/>&nbsp;&nbsp;
+						<strong>Join the Beyond Words Newsletter and the first to head about new releases, promotions, and events!</strong><br>
+						<span>We take your privacy very seriously.  Don't worry, we don't span or share or be bad.</span>
+					</div>
+				</div>
+<?
+	// show password field if user is not logged in and has digital products in the cart
+	if (!$this->EE->session->userdata('member_id') && $digitalProductsCount != 0)
+	{
+	?>			
+				<div class="row">
+					<div class="twelve columns">
+						<span style="color:red;"><i>An account is required when purchasing Digital products. Please enter a password below. <br />Your email address will be the account username.</i><br /><br />
+					</div>
+				</div>
+				<div class="row">
+					<div class="six columns">
+						<label for="account_password">*Password</label><?=((isset($error['account_password']))?$error['account_password']:'')?>
+						<input type="password" name="account_password" id="account_password" value="" autocomplete="off" />
+					</div>
+					<div class="six columns">
+						<label for="confirm_account_password">*Confirm Password</label><?=((isset($error['confirm_account_password']))?$error['confirm_account_password']:'')?>
+						<input type="password" name="confirm_account_password" id="confirm_account_password"  autocomplete="off" />
+					</div>
+				</div>
+	<?
+	}							
+?>
+
+
+			</fieldset>
+			<!-- #Address -->
+<?
+	if($normalProductsCount != 0)
+	{
+	?>
+			<fieldset>
+				<h1 class="title"><?=$stepCounter++?>. Shipping Address</h1>
+				<p>Enter the address where you want your goods to be shipped.</p>
+
+				<div class="row">
+					<div class="six columns">
+						<label for="first-name">First Name</label><?=((isset($error['shipping_first_name']))?$error['shipping_first_name']:'')?>
+						<input type="text" name="shipping_first_name" id="shipping_first_name" value="<?=$predefinedValues['shipping_first_name']?>" />
+					</div>
+					<div class="six columns">
+						<label for="last-name">Last Name</label><?=((isset($error['shipping_last_name']))?$error['shipping_last_name']:'')?>
+						<input type="text" name="shipping_last_name" id="shipping_last-name"  value="<?=$predefinedValues['shipping_last_name']?>" />
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="six columns">
+						<label for="address">Address</label><?=((isset($error['shipping_address']))?$error['shipping_address']:'')?>
+						<input type="text" name="shipping_address" id="shipping_address" value="<?=$predefinedValues['shipping_address']?>" />
+					</div>
+					<div class="six columns">
+						<label for="address-2">Address 2 <span class="helper">( optional )</span></label>
+						<input type="text" name="shipping_address2" id="shipping_address2"  value="<?=$predefinedValues['shipping_address2']?>" />
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="six columns">
+						<label for="city">City</label><?=((isset($error['shipping_city']))?$error['shipping_city']:'')?>
+						<input type="text" name="shipping_city" id="shipping_city"  value="<?=$predefinedValues['shipping_city']?>" />
+					</div>
+					<div class="three columns">
+						<div class="shipping_state_wrapper" style="<?=(($_POST['shipping_country'] == 'US' or !isset($_POST['form_submitted']) or $_POST['shipping_country'] == '')?'':'display:none;')?>">
+							<label for="state">State</label><?=((isset($error['shipping_state']))?$error['shipping_state']:'')?>
+							<select name="shipping_state" id="shipping_state">
+								<option></option>
+								<?
+									foreach ($statesArray as $stateKey => $stateVal){
+										if ($predefinedValues['shipping_state'] == $stateKey){$selected = 'selected';}
+										else {$selected = '';}
+										echo '<option value="'.$stateKey.'" '.$selected.'>'.$stateVal.' - '.$stateKey.'</option>';
+									}
+								?>
+							</select>
+						</div>
+						<div class="shipping_province_wrapper" style="<?=(($_POST['shipping_country'] == 'US' or !isset($_POST['form_submitted']) or $_POST['shipping_country'] == '')?'display:none;':'')?>">
+							<label for="province">Province / State</label><?=((isset($error['shipping_province']))?$error['shipping_province']:'')?>
+							<input type="text" name="shipping_province" id="shipping_province" value="<?=$predefinedValues['shipping_province']?>" />
+						</div>
+					</div>
+					<div class="three columns"><?=((isset($error['shipping_zip']))?$error['shipping_zip']:'')?>
+						<label for="postal-code" class="zipPostal"><?=(($_POST['shipping_country'] == 'US' or $_POST['shipping_country'] == '')?'Zipcode':'Postal Code')?></label>
+						<input type="text" name="shipping_zip" id="shipping_zip" value="<?=$predefinedValues['shipping_zip']?>" />
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="six columns">
+						<label for="country">Country</label><?=((isset($error['shipping_country']))?$error['shipping_country']:'')?>
+						<select name="shipping_country" id="shipping_country">
+							<option></option>
+							<?
+								foreach($countryArray as $keyCountry => $valueCountry)
+								{
+									if (isset($predefinedValues['shipping_country']) and $predefinedValues['shipping_country'] == $keyCountry){$selected = 'selected="selected"';}
+									else{ $selected = '';}
+									echo '<option value="'.$keyCountry.'" '.$selected.'>'.$valueCountry.'</option>';
+								}
+							?>
+						</select>
+					</div>
+				</div>
+			</fieldset>
+	<?
+	}						
+?>
+
+			<!-- #Billing -->
+			<fieldset>
+				<h1 class="title"><?=$stepCounter++?>. Billing Address</h1>
+				<p>Enter your billing address as it appears on your credit card statement.</p>
+
+				<?
+					if ($normalProductsCount == 0)
+					{
+						?>
+							<input type="hidden" class="same_as_shipping" value="no" name="same_as_shipping">
+						<?
+					}
+					else
+					{
+						?>
+							<input type="checkbox" <?=((isset($predefinedValues['form_submitted']) and $predefinedValues['same_as_shipping'] != 'yes')?'':'checked="checked"')?> id="same_as_shipping" autocomplete="off" class="same_as_shipping" value="yes" name="same_as_shipping" style="float:left; display:block;margin-top:5px; margin-right:10px;">&nbsp;&nbsp;
+							<strong class="author"><label for="same_as_shipping" style="float:left;">USE SHIPPING ADDRESS</label></strong>
+							<div style="clear:both;"></div>
+						<?
+					}
+				?>
+
+				<div class="billingAddress" style="<?
+					if ((isset($_POST['form_submitted']) and $_POST['same_as_shipping'] != 'yes') || $normalProductsCount == 0)
+					{
+						
+					}
+					else
+					{
+						echo 'display:none;';
+					}
+					
+				?>">
+					<div class="row">
+						<div class="six columns">
+							<label for="first-name">First Name</label><?=((isset($error['first_name']))?$error['first_name']:'')?>
+							<input type="text" name="first_name" value="<?=$predefinedValues['first_name']?>" id="first-name" />
+						</div>
+						<div class="six columns">
+							<label for="last-name">Last Name</label><?=((isset($error['last_name']))?$error['last_name']:'')?>
+							<input type="text" name="last_name" value="<?=$predefinedValues['last_name']?>" id="last-name" />
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="six columns">
+							<label for="address">Address</label><?=((isset($error['address']))?$error['address']:'')?>
+							<input type="text" name="address"  value="<?=$predefinedValues['address']?>" id="address" />
+						</div>
+						<div class="six columns">
+							<label for="address-2">Address 2 <span class="helper">( optional )</span></label>
+							<input type="text" name="address2"  value="<?=$predefinedValues['address2']?>" id="address2" />
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="six columns">
+							<label for="city">City</label><?=((isset($error['city']))?$error['city']:'')?>
+							<input type="text" name="city" value="<?=$predefinedValues['city']?>" id="city" />
+						</div>
+						<div class="three columns">
+
+							<div class="billing_state_wrapper"  style="<?=(($_POST['country'] == 'US' or !isset($_POST['form_submitted']) or $_POST['country'] == '')?'':'display:none;')?>">
+								<label for="state">State</label><?=((isset($error['state']))?$error['state']:'')?>
+								<select id="state" class="state" name="state">
+									<option></option>
+									<?
+										foreach ($statesArray as $stateKey => $stateVal){
+											if ($predefinedValues['state'] == $stateKey){$selected = 'selected';}
+											else {$selected = '';}
+											echo '<option value="'.$stateKey.'" '.$selected.'>'.$stateVal.' - '.$stateKey.'</option>';
+										}
+									?>
+								</select>
+							</div>
+							<div class="billing_province_wrapper"  style="<?=(($_POST['country'] == 'US' or !isset($_POST['form_submitted']) or $_POST['country'] == '')?'display:none;':'')?>" />
+								<label for="billing_province">Province / State</label><?=((isset($error['province']))?$error['province']:'')?>
+								<input type="text" id="billing_province" value="<?=$predefinedValues['province']?>" name="province" />
+							</div>
+						</div>
+						<div class="three columns">
+							<label for="postal-code" class="zipPostal_billing"><?=(($_POST['country'] == 'US' or $_POST['country'] == '')?'Zipcode':'Postal Code')?></label><?=((isset($error['zip']))?$error['zip']:'')?>
+							<input type="text" name="zip" value="<?=$predefinedValues['zip']?>" id="postal-code" />
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="six columns">
+							<label for="country">Country</label><?=((isset($error['country']))?$error['country']:'')?>
+							<select id="country" class="country" name="country">
+								<option></option>
+								<?
+									foreach($countryArray as $keyCountry => $valueCountry)
+									{
+										if (isset($predefinedValues['country']) and $predefinedValues['country'] == $keyCountry){$selected = 'selected="selected"';}
+										else{ $selected = '';}
+										echo '<option value="'.$keyCountry.'" '.$selected.'>'.$valueCountry.'</option>';
+									}
+								?>
+							</select>
+						</div>
+					</div>
+				</div>
+			</fieldset>
+
+<?
+	if ($normalProductsCount != 0)
+	{
+	?>
+			<!-- #Shipping Method -->
+			<fieldset>
+				<h1 class="title"><?=$stepCounter++?>. Shipping Method <span class=""></span></h1>
+				  <div class="form shippingOptions" style="display:none;"></div>
+				  <?=((isset($error['shipping_selection']))?$error['shipping_selection']:'')?>
+				<p>Shipping options based on the shipping address entered in Step 1 above.</p>
+				<button class="calculateRates button_arrows_red" data-xid="{XID_HASH}">Calculate Rates</button>
+				<input type="hidden" class="shipping_method_input" name="shipping_method_input" />
+				<input type="hidden" class="orderShippingMethod" name="orderShippingMethod" />
+
+			</fieldset>
+	<?
+	}				
+?>
+
+			<!-- #Payment Information -->
+			<fieldset>
+				<h1 class="title"><?=$stepCounter++?>. Payment Information</h1>
+				<p>Choose your payment method.</p>
+				<div class="shipping_row">
+					<div class="shipping_radio" style="width:70px;">
+						<input	type="radio"
+								id="payment_authorize" 
+								name="payment_method" 
+								value="authorize" 
+								checked class="payment_method">
+					</div>
+					<label for="payment_authorize" style="float:left; margin-left:25px; padding-top:10px;">
+						<span class="logo credit_card">&nbsp;</span>
+						<span class="description" style="width: 60%;"><strong>Pay with Credit Card</strong></span>
+					</label>
+				</div>
+				<div style="padding:20px;" id="cc_fields">
+					<div class="row">
+						<div class="six columns">
+							<label for="ccn">Credit Card Number</label><?=((isset($error['credit_card_number']))?$error['credit_card_number']:'')?>
+							<input type="text" name="credit_card_number" id="ccn" />
+						</div>
+						<div class="three columns end">
+							<label for="ccv">CCV</label> <?=((isset($error['CVV2']))?$error['CVV2']:'')?>
+							<input type="text" name="CVV2" id="ccv" />
+						</div>
+					</div>
+					<div class="row">
+						<div class="twelve columns">
+							<label>Expiration Date</label>
+						</div>
+						<div class="three columns">
+							<select id="cc-month" name="expiration_month">
+									<option></option>
+									<option value="01">01 - January</option>
+									<option value="02">02 - February</option>
+									<option value="03">03 - March</option>
+									<option value="04">04 - April</option>
+									<option value="05">05 - May</option>
+									<option value="06">06 - June</option>
+									<option value="07">07 - July</option>
+									<option value="08">08 - August</option>
+									<option value="09">09 - September</option>
+									<option value="10">10 - October</option>
+									<option value="11">11 - November</option>
+									<option value="12">12 - December</option>
+								</select>
+						</div>
+						<div class="two columns end">
+							<select id="cc-year" name="expiration_year">
+								<option></option>
+								<option value="2014">2014</option>
+								<option value="2015">2015</option>
+								<option value="2016">2016</option>
+								<option value="2017">2017</option>
+								<option value="2018">2018</option>
+								<option value="2019">2019</option>
+								<option value="2020">2020</option>
+								<option value="2021">2021</option>
+								<option value="2022">2022</option>
+								<option value="2022">2023</option>
+								<option value="2022">2024</option>
+							</select>
+						</div>
+						<?=((isset($error['credit_card_number']))?$error['expiration_month'].'<br />':'')?>
+						<?=((isset($error['credit_card_number']))?$error['expiration_year']:'')?>
+					</div>
+					<?=((isset( $auth['error_message']))? '<span class="checkout_error">'.$auth['error_message'].'</span>':'')?>
+				</div>
+				<div class="shipping_row">
+					<div class="shipping_radio" style="width:70px;">
+						<input type="radio" id="payment_paypal" name="payment_method" value="paypal" class="payment_method">
+					</div>
+					<label for="payment_paypal" style="float:left; margin-left:25px; padding-top:10px;">
+						<span class="logo paypal">&nbsp;</span>
+						<span class="description" style="width: 60%;"><strong>Pay with PayPal</strong></span>
+					</label>
+				</div>
+			</fieldset>
+
+
+
+<?
+	// show password field if user is not logged in and has digital products in the cart
+	if (!$this->EE->session->userdata('member_id') && $digitalProductsCount == 0)
+	{
+	?>			
+			<fieldset>
+				<div class="row">
+					<input type="checkbox" checked="checked" id="create_account" name="create_account" value="yes" style="float:left; display:block;margin-top:5px; margin-right:10px;">
+					<strong class="author"><label for="create_account" style="float:left;">Please create a free account for me so I can checkout faster next time.</label></strong>
+				</div>
+				<div class="row">
+					<div class="six columns">
+						<label for="account_password">*Password</label><?=((isset($error['account_password']))?$error['account_password']:'')?>
+						<input type="password" name="account_password" id="account_password" value="" autocomplete="off" />
+					</div>
+					<div class="six columns">
+						<label for="confirm_account_password">*Confirm Password</label><?=((isset($error['confirm_account_password']))?$error['confirm_account_password']:'')?>
+						<input type="password" name="confirm_account_password" id="confirm_account_password"  autocomplete="off" />
+					</div>
+				</div>
+			</fieldset>
+	<?
+	}							
+?>
+
+			<!-- #Complete Order -->
+			<fieldset class="complete_order">
+				<div class="row">
+					<div class="five columns">
+						<h3 class="note">That's It!</h3>
+						<p>Press "Submit Order" to continue on<br/>to the confirmation page.</p>
+					</div>
+					<div class="seven columns">
+						<button class="button_arrows_red">Submit Order</button>
+					</div>
+				</div>
+			</fieldset>
+		</form>
+	</div>
+
+
+	<!-- Right promotions -->
+	<div class="right-side columns">
+
+		<aside class="right_sidebar order_details">
+			<header>
+				<h3 class="heading"><span class="serif">Order</span> Details</h3>
+			</header>
+
+			<div class="inner_content">
+				<ul class="order_items">
+				<?
+					foreach($products as $keyProduct => $valProduct){
+						switch($valProduct['item_options']['purchase_type'])
+						{
+							case "Bundle":
+								$entry_id = $valProduct['entry_id'];
+								$sqlGetAuthor = "select exp_channel_titles.entry_id as `author_entry_id`, exp_channel_titles.title as `author_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id left join exp_channel_data on exp_channel_data.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$entry_id."' and exp_playa_relationships.parent_field_id = 195 limit 1";
+								$qryGetAuthor = $this->EE->db->query($sqlGetAuthor);
+								$arrGetAuthor = $qryGetAuthor->result_array();
+								$retail_price = '';
+
+								$p = $this->EE->cartthrob->get_product($entry_id);
+								$productOptions = $p->item_options();
+	
+								/*foreach($productOptions['bundle_options'] as $keyOption => $valOption)
+								{
+									if ($valOption['option_name'] == $valProduct['item_options']['product_type']){
+										$retail_price += $valOption['retail_price'];
+									}
+								}*/
+
+								$fullProductOptions = $productOptions['product_options'][$arrayIndex];
+
+								$productInfo = $this->EE->cartthrob_entries_model->entry($entry_id);
+
+								if (empty($fullProductOptions['sales_price'])){ $displayPrice = $fullProductOptions['price'];}
+								else{ $displayPrice = $fullProductOptions['sales_price'];}
+
+								$retailPrice = $fullProductOptions['retail_price'];
+								break;
+							default:
+								$entry_id = $valProduct['entry_id'];	
+								$sqlGetAuthor = "select exp_channel_titles.title as `author_title` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$entry_id."' and exp_playa_relationships.parent_field_id = 103 limit 1";
+								$qryGetAuthor = $this->EE->db->query($sqlGetAuthor);
+								$arrGetAuthor = $qryGetAuthor->result_array();
+
+								
+								$p = $this->EE->cartthrob->get_product($entry_id);
+								$productOptions = $p->item_options();
+								
+								foreach($productOptions['product_options'] as $keyOption => $valOption)
+								{
+									if ($valOption['option_value'] == $valProduct['item_options']['product_sku']){
+										$arrayIndex = $keyOption;
+										break;
+									}
+								}
+
+								$fullProductOptions = $productOptions['product_options'][$arrayIndex];
+
+								$productInfo = $this->EE->cartthrob_entries_model->entry($entry_id);
+
+								if (empty($fullProductOptions['sales_price'])){ $displayPrice = $fullProductOptions['price'];}
+								else{ $displayPrice = $fullProductOptions['sales_price'];}
+
+								$retailPrice = $fullProductOptions['retail_price'];
+								break;
+						}
+
+						?>
+							<li>
+								<h3 class="title"><?=$valProduct['title']?></h4>
+								<h4 class="author"><?=$arrGetAuthor[0]['author_title']?></h5>
+								<h5>
+									<?=ucwords($valProduct['item_options']['product_type'])?><br/>
+									Quantity: <?=$valProduct['quantity'];?><br/>
+
+									{!-- retail price --}
+									<?php if($retailPrice != '' and $retailPrice != 0): ?>
+										Retail: <del>$<?=money_format('%i' , $retailPrice)?></del><br/>
+									<?php endif; ?>
+									{!-- /retail price --}
+
+									Price: $<?=money_format('%i' , $displayPrice)?>
+								</h5>
+								<h6><?=money_format('%i', $valProduct['price']*$valProduct['quantity'])?></h6>
+							</li>
+						<?
+					}
+					?>
+				</ul>
+				<ul class="subtotal">
+					<li>Subtotal <span>$<?=money_format('%i' , $this->EE->cartthrob->cart->subtotal())?></span></li>
+					<li>Shipping <span id="shipping_value"><?=(($this->EE->cartthrob->cart->shipping())?'Select Method':$this->EE->cartthrob->cart->shipping())?></span></li>
+					<!--<li>Tax <span>$0</span></li>-->
+					<?
+						$couponsAdded = $this->EE->cartthrob->cart->coupon_codes();
+
+						if (count($couponsAdded)){
+							echo '<li>Discount <span>- $'.money_format('%i', $this->EE->cartthrob->cart->discount()).'</span></li>';
+						}
+					?>
+
+				</ul>
+
+				<div class="order_total">
+					<h3>Total</h3>
+					<h4>$<?=money_format('%i' , $this->EE->cartthrob->cart->total())?></h4>
+				</div>
+
+			</div>
+
+			<footer>
+				<a href="/buy/cart">Edit your order</a>
+			</footer>
+
+		</aside>
+
+	
+	</div>
+{embed='includes/footer'}

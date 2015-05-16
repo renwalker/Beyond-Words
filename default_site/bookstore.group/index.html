@@ -1,0 +1,317 @@
+{embed='includes/header'}
+{breadcrumbs_store}
+{exp:channel:entries channel="	bookstore" limit="1" status="not closed"}
+
+<div role="main" class="row" id="main_body">
+	{sidebar_store}
+	<div class="ten columns">
+
+<!--  ========================================================================== -->
+	<!-- # Featured Box -->
+	<section class="featured">
+		<div class="box_header">
+			<h2 class="heading"><span class="serif">Featured</span> Book</h2>
+			<div class="note widow">{custom_note}</div>
+		</div>
+		<div class="featured_content waves row collapse">
+			<!-- the product image -->
+			<div class="three columns">
+				<a href="#">
+					<div class="product">
+						<div class="book"><img src="{site_url}images/demo/book1.png" /></div>
+					</div>
+				</a>
+			</div>
+			<!--  -->
+			<div class="nine columns">
+				<h2 class="title"><a href="#">Book Title</a></h2>
+				<h4 class="author">Author Name</h4>
+				<p>Nulla vitae elit libero, a pharetra augue. Donec ullamcorper nulla non metus auctor fringilla. Donec sed odio dui. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Maecenas faucibus mollis interdum.  Donec ullamcorper nulla non metus auctor fringilla. Donec sed odio dui. </p>
+				<a href="http://www.youtube.com/watch?v=t1kApnsayeQ" class="trailer media_fancybox" title="<img src='{site_url}images/demo/book1.png' /><em>You are watching the trailer for: </em><h3>Frequency: The Power of Personal Vibration</h3>	<a href='#'>Purchase this film</a>">
+					Watch Trailer
+				</a>
+				<!-- bottom content -->
+				<div class="featured_bottom clearfix">
+					<div class="six columns collapse">
+						Discover more like this from:
+						<ul class="categories">
+							<li><a href="#">Category Name</a></li>
+							<li><a href="#">Category Name</a></li>
+							<li><a href="#">Category Name</a></li>
+						</ul>
+					</div>
+					<div class="right-side columns">
+						<a href="#" class="button_add">Add to Basket $19.95</a>
+						<a href="#" class="more_formats">2 other formats available</a>
+					</div>
+				</div><!-- end featured_bottom -->
+			</div><!-- end nine col -->
+		</div><!-- end featured_content -->
+	</section><!-- end featured -->
+
+
+<!--  ========================================================================== -->
+	<!-- Best-Selling Product Carousel -->
+	<section class="product_grid">
+	<div class="row">
+		<div class="twelve columns collapse">
+			<h2 class="section_title"><span class="serif">Our</span> Bestsellers</h2>
+		</div>
+
+		<div class="twelve columns collapse" id="carousel_hold">
+
+		<ul class="products carousel_products" id="products_carousel">
+
+<!--		HERE'S YOUR TEMPLATE FOR A CAROUSEL PRODUCT.  The minified text is just for functionality preview.  Want to load via AJAX or Javascript?  Examples available at http://sorgalla.com/jcarousel/
+			<li>
+				<div class="product">
+						<a href="#">
+							<div class="{book|dvd|gift}"><img src="{image}" /></div>
+							<span class="tag {sale|new|staff_pick|coming_soon}">{Sale | New | Staff Pick | Coming Soon}</span>
+							<h4 class="title">{title}</h4>
+							<h5 class="author">{author}</h5>
+						</a>
+						<div class="rating current_rating">
+							<div class="four_star">
+								<span>•</span><span>•</span><span>•</span><span>•</span><span>•</span>
+							</div>
+						</div>
+				</div>
+			</li>
+-->
+
+<li><div class="product"><a href="#"><div class="book"><img src="{site_url}images/demo/book4.png"/></div><span class="tag sale">Sale</span><h4 class="title">A Spiritual Renegade's Guide to the Good Life</h4><h5 class="author">Lama Marut</h5></a><div class="rating current_rating"><div class="four_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></div></li><li><div class="product"><a href="#"><div class="dvd"><img src="{site_url}images/demo/dvd2.png"/></div><span class="tag staff_pick">Staff Pick</span><h4 class="title">Healing</h4><h5 class="author">Heather Cumming</h5><h6 class="format">DVD</h6></a><div class="rating current_rating"><div class="five_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></div></li><li><div class="product" style="position:relative;"><a href="#"><div class="gift"><img src="{site_url}images/demo/gift3.png"/></div><span class="tag coming_soon">Coming Soon</span><h4 class="title">Power of Prayer: Fujiwara Dam</h4><h5 class="author">Dr. Masaru Emoto</h5><h6 class="format">Poster</h6></a></div><div class="rating current_rating"><div class="no_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></li><li><div class="product"><a href="#"><div class="book"><img src="{site_url}images/demo/book2.png"/></div><span class="tag sale">Sale</span><h4 class="title">Awakening the Brain</h4><h5 class="author">Charlotte A. Tomaino, PHD</h5></a><div class="rating current_rating"><div class="four_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></div></li><li><div class="product"><a href="#"><div class="dvd"><img src="{site_url}images/demo/dvd3.png"/></div><span class="tag staff_pick">Staff Pick</span><h4 class="title">The Living Matrix</h4><h5 class="author"></h5><h6 class="format">DVD</h6></a><div class="rating current_rating"><div class="five_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></div></li><li><div class="product"><a href="#"><div class="book"><img src="{site_url}images/demo/book4.png"/></div><h4 class="title">A Spiritual Renegade's Guide to the Good Life</h4><h5 class="author">Lama Marut</h5></a></div></li><li><div class="product" style="position:relative;"><a href="#"><div class="gift"><img src="{site_url}images/demo/gift4.png"/></div><h4 class="title">Stainless Steel Water Bottle</h4><h5 class="author">Dr. Masaru Emoto</h5><h6 class="format">Water Bottle</h6></a></div><div class="rating current_rating"><div class="no_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></li><li><div class="product"><a href="#"><div class="book"><img src="{site_url}images/demo/book5.png"/></div><h4 class="title">Choose Them Wisely</h4><h5 class="author">Mike Dooley</h5></a><div class="rating current_rating"><div class="four_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></div></li><li><div class="product"><a href="#"><div class="dvd"><img src="{site_url}images/demo/dvd5.png"/></div><span class="tag staff_pick">Staff Pick</span><h4 class="title">Something Unknown</h4><h6 class="format">DVD</h6></a><div class="rating current_rating"><div class="five_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></div></li><li><div class="product" style="position:relative;"><a href="#"><div class="gift"><img src="{site_url}images/demo/gift5.png"/></div><h4 class="title">The Secret Language of Color</h4><h5 class="author">Inna Segal</h5><h6 class="format">Card Deck</h6></a></div><div class="rating current_rating"><div class="no_star"><span>•</span><span>•</span><span>•</span><span>•</span><span>•</span></div></div></li>
+
+		</ul>
+		</div>
+	</div>
+	</section><!-- end best seller carousel -->
+
+<!--  ========================================================================== -->
+	<!-- Popular Categories -->
+	<section class="popular_categories">
+	<div class="row">
+		<div class="twelve columns collapse">
+			<h2 class="section_title"><span class="serif">Popular</span> Categories</h2>
+		</div>
+
+		<!-- intro -->
+		<div class="three columns collapse category_intro">
+			<p>{general_excerpt}</p>
+
+		</div>
+
+
+		<!-- category list -->
+		<div class="nine columns">
+
+			<!-- Category 1 -->
+			<div class="popular_category clearfix">
+				<div class="eight columns collapse category_description">
+					<h3><a href="#">Health & Wellness</a></h3>
+					<span>46 books <!-- if dvd: films | if gifts: items --></span>
+					<p>Com sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Cras mattis consectetur purus sit amet.</p>
+				</div>
+				<ul class="four columns tiny_products">
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/book1.png)" class="has-tip tip-right special1"  title="Frequency"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/book2.png)" class="has-tip tip-right special2"  title="Awakening the Brain"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/book3.png)" class="has-tip tip-right special3" title="The Secret"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/book4.png)" class="has-tip tip-right special4"  title="A Spiritual Renegade's Guide to the Good Life"></a>
+					</li>
+				</ul>
+			</div><!-- end category 1 -->
+
+			<!-- Category 2 -->
+			<div class="popular_category clearfix">
+				<div class="eight columns collapse category_description">
+					<h3><a href="#">Spiritual Lifestyles</a></h3>
+					<span>21 items <!-- if dvd: films | if gifts: items --></span>
+					<p>Cras mattis consectetur purus sit amet fermentum. Aenean lacinia bibendum nulla sed consectetur.</p>
+				</div>
+				<ul class="four columns tiny_products">
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/gift1.png)"  class="has-tip tip-right special1" title="Ashana"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/gift2.png)"  class="has-tip  tip-right special2" title="Shadows and Light"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/gift3.png)"  class="has-tip  tip-right special3" title="Power of Prayer"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/gift4.png)"  class="has-tip tip-right special4" title="Blue Water Bottle"></a>
+					</li>
+				</ul>
+			</div><!-- end category 2 -->
+
+			<!-- Category 3 -->
+			<div class="popular_category clearfix">
+				<div class="eight columns collapse category_description">
+					<h3><a href="#">Inspiration</a></h3>
+					<span>52 films <!-- if dvd: films | if gifts: items --></span>
+					<p>Maecenas sed diam eget risus varius blandit sit amet non magna. Curabitur blandit tempus porttitor.</p>
+				</div>
+				<ul class="four columns tiny_products">
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/dvd1.png)"  class="has-tip  tip-right special1" title="Finding Joe"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/dvd2.png)"  class="has-tip  tip-right special2"  title="Healing"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/dvd3.png)"  class="has-tip  tip-right special3" title="The Living Matrix"></a>
+					</li>
+					<li>
+						<a href="#" style="background-image:url({site_url}images/demo/dvd4.png)"  class="has-tip  tip-right special4"  title="Orbs"></a>
+					</li>
+				</ul>
+			</div><!-- end category 3 -->
+		</div>
+	</div><!-- end row -->
+	</section><!-- end popular categories -->
+
+
+
+
+
+
+<!--  ========================================================================== -->
+	<!-- # Featured Author -->
+	<section class="featured_author">
+	<div class="row">
+		<div class="twelve columns collapse">
+			<h2 class="section_title"><span class="serif">Category</span> Featured Author</h2>
+		</div>
+		<div class="nine columns collapse">
+			<!-- short bio -->
+			<p class="intro">Blurb about author.  Maecenas faucibus mollis interdum. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Etiam porta sem malesuada magna mollis euismod. Maecenas sed diam eget risus varius blandit sit amet non magna.</p>
+			<!-- book by author -->
+			<div class="one-fifths columns">
+				<div class="product product_small">
+					<a href="#">
+						<div class="book"><img src="{site_url}images/demo/book2.png" /></div>
+					</a>
+				</div>
+			</div>
+			<!-- about book + links -->
+			<div class="four-fifths columns">
+				<p><a class="intro" href="#">Book Title</a> mollis interdum. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. Etiam porta sem malesuada magna mollis euismod.</p>
+				<ul class="link_list">
+					<li><a href="#">Mollis Commodo</a></li>
+					<li><a href="#">Porta Fermentum</a></li>
+					<li><a href="#">Bibendum Purus</a></li>
+				</ul>
+			</div>
+		</div> <!-- / nine col end -->
+		<!-- author pic -->
+		<div class="three columns">
+			<a href="#" class="author_image" >
+				<img src="{site_url}images/demo/author1.jpg" title="AUTHORNAME" />
+			</a>
+		</div>
+	</div>
+	</section><!-- end featured author -->
+
+
+
+
+<!--  ========================================================================== -->
+	<!-- Coming Soon -->
+	<section class="coming_soon">
+	<div class="row">
+		<div class="twelve columns collapse">
+			<h2 class="section_title"><span class="serif">Coming Soon to</span> Beyond Words</h2>
+		</div>
+		<div class="eight columns collapse">
+			 <ul class="products">
+			 	<li>
+ 					<div class="product">
+						<a href="#">
+							<div class="book"><img src="{site_url}images/demo/book2.png" /></div>
+							<h4 class="title">Ipsum Sem Commodo</h4>
+							<h5 class="author">Mattis Commodo</h5>
+						</a>
+					</div>
+					<ul class="categories">
+						<li><a href="#">Inspiration</a></li>
+						<li><a href="#">Spirituality</a></li>
+						<li><a href="#">Motivation</a></li>
+					</ul>
+			 	</li>
+			 	<li>
+ 					<div class="product">
+						<a href="#">
+							<div class="book"><img src="{site_url}images/demo/book3.png" /></div>
+							<h4 class="title">Ipsum Sem Commodo</h4>
+							<h5 class="author">Mattis Commodo</h5>
+						</a>
+					</div>
+					<ul class="categories">
+						<li><a href="#">Holistic Healing</a></li>
+						<li><a href="#">Self Help</a></li>
+						<li><a href="#">Sacred Feminine</a></li>
+					</ul>
+			 	</li>
+			 	<li>
+ 					<div class="product">
+						<a href="#">
+							<div class="book"><img src="{site_url}images/demo/book4.png" /></div>
+							<h4 class="title">Ipsum Sem Commodo</h4>
+							<h5 class="author">Mattis Commodo</h5>
+						</a>
+					</div>
+					<ul class="categories">
+						<li><a href="#">New Science</a></li>
+						<li><a href="#">Indigeous Wisdom</a></li>
+						<li><a href="#">Nature & Environment</a></li>
+					</ul>
+			 	</li>
+			 </ul>
+		</div> <!-- / col end -->
+
+		<!-- coming soon newsletter sign up-->
+		{embed="contact/newsletter_books"}
+	</div>
+	<div class="row">
+		<div class="twelve columns collapse">
+			<a href="#" class="heading red "><span class="serif">View All</span> Upcoming Releases</a>
+		</div>
+	</div>
+	</section><!-- end coming soon -->
+
+
+
+<!--  ========================================================================== -->
+	<!-- # Blog Box -->
+	<section class="blog_box">
+		<div class="box_header">
+			<h2 class="heading"><span class="serif white">From the</span> Beyond Words <span class="serif">Blog</span></h2>
+		</div>
+		<div class="blog_box_content row">
+			<div class="two columns">
+				<a href="#" class="post_date"><span>May</span><br/>30</a>
+			</div>
+			<div class="eight columns">
+				<h3 class="heading"><a href="#">Blog Article Title</a></h3>
+				<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. Donec id elit non mi porta gravida at eget metus.  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. Donec id elit non mi porta gravida at eget metus.  Lorem ipsum dolor sit amet, consectetur adipiscing elit. Donec ullamcorper nulla non metus auctor fringilla. Nulla vitae elit libero, a pharetra augue. <a href="#">Read on...</a></p>
+			</div>
+			<div class="two columns">
+				<img src="http://placekitten.com/g/200/300" />
+			</div>
+		</div>
+	</section><!-- end blog box -->
+
+
+
+
+
+	</div>
+{/exp:channel:entries}
+{embed='includes/footer'}

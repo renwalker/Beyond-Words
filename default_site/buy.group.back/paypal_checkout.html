@@ -1,0 +1,129 @@
+<?php
+@session_start();
+require_once PATH_THIRD . 'ad_paypal/ad_paypal_lib.php';
+$settings = Ad_paypal_lib::$config;
+
+/* get order totals */
+$instock = 0;
+$shipping = 0;
+if (array_key_exists('order_data_instock', $_SESSION))
+{
+	$order_data_instock = unserialize(base64_decode($_SESSION['order_data_instock']));
+	foreach ($order_data_instock['items'] AS $item)
+	{
+		$instock += $item['price'] * $item['quantity'];
+	}
+//	unset($_SESSION['order_data_instock']);
+
+	$shipping = $order_data_instock['shipping_plus_tax'];
+}
+
+$backorders = 0;
+if (array_key_exists('order_backorder', $_SESSION))
+{
+	$order_backorder = unserialize(base64_decode($_SESSION['order_backorder']));
+	foreach ($order_backorder['items'] AS $item)
+	{
+		$backorders += $item['price'] * $item['quantity'];
+	}
+//	unset($_SESSION['order_backorder']);
+}
+
+$charge_now = $instock + $shipping;
+$total = $backorders + $instock + $shipping;
+
+
+/* // DEBUG 
+echo "instock $instock <br>\n";
+echo "backorders $backorders <br>\n";
+echo "shipping $shipping <br>\n";
+echo "total $total <br>\n";
+
+echo "<br>\n<br>\n<br>\n<pre>\n";
+
+if (array_key_exists('order_info', $_SESSION))
+{
+	$orderInfo = base64_decode($_SESSION['order_info']);
+	if (FALSE != $orderInfo)
+	{
+		$orderInfo = unserialize($orderInfo);
+	}
+	print_r($orderInfo);
+}
+
+echo "</pre>\n<br>\n<br>\n<br>\n<pre>\n";
+
+print_r($_SESSION);
+
+echo "</pre>\n<br>\n<br>\n<br>\n<pre>\n";
+
+print_r($settings);
+
+echo "</pre>";
+
+die();
+
+*/
+
+if (0 == $total)
+{
+	header("Location: /buy/cart");
+}
+
+if (0 == (int) $backorders)
+{
+	$memo = "";
+	$settings['maxNumberOfPayments'] = 1;
+}
+elseif (0 == (int) $instock)
+{
+	$memo = "Your PayPal account will be charged when your items are shipped.";
+	$memo = '&memo=' . urlencode($memo);
+}
+else
+{
+	$memo = "Your PayPal account will be charged \$$charge_now now and \$$backorders when your preorder / backorder items are shipped.";
+	$memo = '&memo=' . urlencode($memo);
+}
+
+$data = ad_paypal_lib::preapproval_setup($total, $memo, $settings['captureDays'], $settings['maxNumberOfPayments']);
+
+// store preapproval key
+if (array_key_exists('preapprovalKey', $data) && array_key_exists('order_info', $_SESSION))
+{
+	$orderInfo = unserialize(base64_decode($_SESSION['order_info']));
+	$order_fields = ad_paypal_lib::get_channel_fields('orders');
+
+	$sql = "UPDATE `exp_channel_data` AS d
+			LEFT JOIN `exp_channel_titles` AS t ON d.entry_id = t.entry_id
+			LEFT JOIN `exp_channels` AS c ON c.channel_id = t.channel_id
+			SET d.field_id_$order_fields[paypal_transaction_id] = '$data[preapprovalKey]'
+			WHERE	t.url_title LIKE 'order_$orderInfo[order_id]%' AND
+					c.channel_name = 'orders'";
+	$results = $this->EE->db->query($sql);
+}
+
+if (!$data['success']) {
+	$msg  = "Beyond Words PayPal PreApproval Error: \n\n";
+	$msg .= print_r($data, TRUE);
+	mail('david.advocaat@adpearance.com', 'Beyond Words PayPal PreApproval Error', $msg);
+	?>
+{embed='includes/header'}
+	<section>
+		<div class="center">
+			<h2>We are sorry, but an error occurred when connecting to PayPal.  Please Contact us if this problem persists.</h2>
+			<p><a href="/buy/checkout">Try again.</a></p>
+		</div>
+	</section>
+{embed='includes/footer'}
+	<?
+}
+else
+{
+	$url = $settings['preapproval_redirect_url'] . $data['preapprovalKey'];
+	$_SESSION['preapprovalKey'] = $data['preapprovalKey'];
+	header("Location: $url");
+}
+
+
+?>

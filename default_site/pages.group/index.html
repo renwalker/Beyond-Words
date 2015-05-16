@@ -1,0 +1,14 @@
+{embed='includes/header'}
+
+<div role="main" class="row">
+	<div class="twelve columns">
+		{exp:channel:entries channel="pages" limit="1"}
+			<div class="content">
+				<h1 class="title">{title}</h1>
+				{if page_image}<img src="{page_image}" />{/if}
+				{page_content}
+			</div>
+		{/exp:channel:entries}
+	</div>
+
+{embed='includes/footer'}

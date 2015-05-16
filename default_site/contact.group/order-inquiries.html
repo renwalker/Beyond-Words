@@ -1,0 +1,81 @@
+{embed='includes/header'}
+
+<div role="main" class="row">
+
+	{embed='about/sidebar_about'}
+
+	<div class="ten columns">
+		<div class="bw_form content readability">
+
+			{exp:freeform:form
+				form_name="order_inquiries"
+				inline_errors="yes"
+				return="contact/order-inquiries/thanks"
+				required="email_address|phone_number|order_number|inquiry"
+			}
+
+			<h1 class="title">{freeform:form_label} </h1>
+
+			<p>{exp:channel:entries channel="contact" limit="1" url_title="order-inquiries"}{contact_page_content}{/exp:channel:entries}</p>
+			<p>{freeform:form_description} </p>
+
+			{if last_segment == "thanks"}
+				<div class="success_message">
+					<h2 class="serif black">Message Sent</h2>
+					<p>Your message has been successfully sent.  We'll be in contact with you shortly to answer your order inquiry.</p>
+				</div>
+			{if:else}
+
+				<fieldset>
+					{if freeform:general_errors}
+					    <h2>There were some error(s) with your submission:</h2>
+					    <ul>
+					        {freeform:general_errors}
+					        <li>{freeform:error_message}</li>
+					        {/freeform:general_errors}
+					    </ul>
+					{/if}
+
+					{if freeform:error:email_address || freeform:error:phone_number ||  freeform:error:order_number }
+						<p class="error_message">Whoops! There were some error(s) with your submission.  Please fill out the required fields.</p>
+					{/if}
+
+					<div class="six columns">
+						<label for="full_name">{freeform:label:full_name}</label>
+						{freeform:field:full_name attr:id="full_name"}
+					</div>
+
+					<div class="six columns {if freeform:error:email_address}error{/if} ">
+						<label for="email_address">{freeform:label:email_address} <span>*</span></label>
+						{freeform:field:email_address attr:id="email_address"}
+					</div>
+
+					<div class="six columns {if freeform:error:phone_number}error{/if} ">
+						<label for="phone_number">{freeform:label:phone_number} <span>*</span></label>
+						{freeform:field:phone_number attr:id="phone_number"}
+					</div>
+
+					<div class="six columns {if freeform:error:order_number}error{/if} ">
+						<label for="order_number">{freeform:label:order_number} <span>*</span></label>
+						{freeform:field:order_number attr:id="order_number"}
+					</div>
+
+					<div class="twelve columns">
+						<label for="inquiry">Comments</label>
+						{freeform:field:inquiry attr:id="inquiry"}
+					</div>
+
+					<div class="twelve columns">
+						<button class="button_arrows_red" type="submit">Submit</button>
+					</div>
+
+				</fieldset>
+				{/if}
+			{/exp:freeform:form}
+
+		</div>
+	</div>
+
+</div>
+
+{embed='includes/footer'}

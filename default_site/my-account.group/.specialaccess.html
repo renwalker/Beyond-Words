@@ -1,0 +1,53 @@
+<?
+	$this->EE =& get_instance();
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+	$this->EE->load->add_package_path(PATH_THIRD.'channel_images/');
+	$this->EE->load->library('cartthrob_loader');
+
+	$this->EE->load->model('cartthrob_members_model');
+	$this->EE->load->model('member_model');
+	$member_id = $this->EE->session->userdata('member_id');	
+	$memberInfo = $this->EE->member_model->get_member_data($member_id);
+	$memberInfoArray = $memberInfo->result_array();
+
+	$email = $memberInfoArray[0]['email'];
+?>
+<div class="twelve columns">
+	<div class="row">
+		<h1 class="title">Special Access</h1>
+	</div>
+	<div class="row">
+	{exp:channel:entries search:type="Digital|Video" search:product_special_access="<?=$memberInfoArray[0]['email']?>" channel="products"}
+	{if no_results}
+		You have not been granted special access to any assets.
+	{/if}
+<div class="two column" style="float:left;">
+						{product_image limit="1"}
+							{if type == "Video"}
+								<a href="#{entry_id}" class="fancy_video">
+							{/if}
+								<img src="{image:url}" />
+							{if type == "Video"}
+								</a>
+							{/if}
+						{/product_image}
+						
+						{if type == "Digital"}
+							{digital_assets}
+								<h4 style="padding:5px;"><a href="{file}" target="_blank"><span style="color:#000;">{row_count}.</span> {file_title}</a></h4></center>
+							{/digital_assets}
+						{/if}
+						
+						{if type == "Video"}
+							<p><h4><a href="#{entry_id}" class="fancy_video"><p>{title}</p>&nbsp; &nbsp; Watch Video &raquo;</a></p>
+							<div id="{entry_id}" style="display:none">
+								<div class="row">
+									{digital_video_iframe}
+								</div>
+							</div>
+						{/if}
+						
+					</div>
+	{/exp:channel:entries}
+	</div>
+</div>

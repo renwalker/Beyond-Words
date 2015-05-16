@@ -1,0 +1,18 @@
+{embed='includes/header'}
+
+<div role="main" class="row">
+
+	{embed='about/sidebar_about'}
+
+	<div class="ten columns">
+
+		{exp:channel:entries channel="about" entry_id="37"}
+			<div class="content">
+				<h1 class="title">{title}</h1>
+				{about_content}
+			</div>
+		{/exp:channel:entries}
+	</div>
+
+{embed='includes/footer'}
+

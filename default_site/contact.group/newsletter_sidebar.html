@@ -1,0 +1,32 @@
+<div id="newsletter_sidebar_message_target"> 
+    {!-- only for the off chance that js is turned off. Otherwise handled by /templates/js/ajax-methods.js and /templates/default_site/contact.group/newsletter_handler.html --}
+    <?php 
+
+        include_once './templates/default_site/contact.group/newsletter_handler.php'; 
+        $form_result = handle_newsletter('sidebar_newsletter');
+
+        echo $form_result['message'];
+
+    ?>
+</div>
+<div class="newsletter_box waves green_waves">
+	<h2 class="heading">
+		<span class="serif">First</span>&nbsp;Looks<br/>
+		<span class="serif">Exclusive</span>&nbsp;Deals
+	</h2>
+
+    <p>Straight to your inbox!</p>
+
+    <form action="" method="post" class="newsletter_ajax_form" data-message-target="#newsletter_sidebar_message_target">
+		<input type="hidden" name="XID" value="{XID_HASH}" /> 
+        <input type="hidden" name="form_name" value="sidebar_newsletter"/>
+        <input type="text" id="newsletter-name" name="full_name" placeholder="Enter your name">
+        <div class="<?php 
+            if(isset($form_result['inline_errors']['email_address'])) {
+
+                echo $form_result['inline_errors']['email_address'];
+
+            } ?>"><input type="email" id="newsletter-email" name="email_address" placeholder="...and email!"></div>
+        <button type="submit" onclick="_gaq.push(['_trackEvent','{exp:ad_helper:full_segments}', 'Submit', 'First Look & Exclusive Deals Newsletter']);" class="btn_arrow_black">Submit</button>
+    </form>
+</div>

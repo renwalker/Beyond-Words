@@ -1,0 +1,326 @@
+{embed='includes/header'}
+{embed='blog/breadcrumbs_blog'}
+
+<div role="main" class="row main-content">
+
+	{embed='blog/sidebar_blog'}
+
+	<div class="ten columns">
+
+	<!--  ========================================================================== -->
+	<!-- # Featured Box -->
+	{if last_segment == 'blog'}
+	{exp:channel:entries channel="blog" limit="1" orderby="date" }
+	
+	<section class="featured feat_blog">
+		<div class="box_header">
+			<h2 class="heading"><span class="serif">Most Recent</span> Blog Article</h2>
+		</div>
+		<div class="featured_content waves row collapse">
+
+			<!-- the  image -->
+			<div class="three columns">
+
+				{if blog_product != "" }
+					{exp:playa:children field="blog_product"}
+						<div class="blog_image blog_product">
+							{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+								<img src="{image:url:grid}" title="{title}" />
+							{/exp:channel_images:images}
+						</div>
+					{/exp:playa:children}
+				{/if}
+
+				{if blog_author !=""}
+					{exp:playa:children field="blog_author"}
+						<div class="blog_image blog_author">
+							{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+								<img src="{image:url:medium}" title="{title}" />
+							{/exp:channel_images:images}
+						</div>
+					{/exp:playa:children}
+				{/if}
+
+			</div>
+
+			<!-- information -->
+			<div class="nine columns">
+
+				<div class="tag_wrap">
+					{categories}
+						{if category_id == "478"}
+							<span class="tag coming_soon">Guest Post</span>
+						{if:elseif category_id=="472"}
+							<span class="tag staff_pick">Author Interview</span>
+						{/if}
+					{/categories}
+				</div>
+
+				<h2 class="title"><a href="blog/{url_title}">{title}</a></h2>
+				<h6 class="author">Posted on {entry_date format="%F %j, %Y"}</h6>
+
+				{if blog_intro}
+					{blog_intro}
+				{if:else}
+					{blog_content strip_tags="true" allowable_tags="<a><em><p>" paragraph_limit="1"}</p></em></a>
+				{/if}
+
+				<!-- bottom content -->
+				<div class="featured_bottom clearfix">
+					<div class="six columns collapse">
+						Discover more like this from:
+						<ul class="categories">
+						{categories}
+							{if {category_id} != '34' && {category_id} != '58' && {category_id} != '70' && {category_id} != '71' && {category_id} != '73' && {category_id} != '69' && {category_id} != '67' && {category_id} != '68' && {category_id} != '66' && {category_id} != '65'}
+							<li><a href="{path='blog/index'}">{category_name}</a></li>
+							{/if}
+						{/categories}
+						</ul>
+					</div>
+					<div class="right-side columns">
+						<a href="blog/{url_title}" class="button_arrows_red">Read More</a>
+					</div>
+
+				</div><!-- end featured_bottom -->
+
+			</div><!-- end nine col -->
+
+		</div><!-- end featured_content -->
+	</section><!-- end featured -->
+	{/exp:channel:entries}
+	{/if}
+
+	<!--  ========================================================================== -->
+	<!-- # Blogroll -->
+
+	<div class="row">
+
+			{exp:channel:entries channel="blog" limit="10" paginate="bottom"  {if last_segment == 'blog'}offset="1"{/if} }
+			{if no_results}
+				banana
+				{redirect="404"}
+			{/if}
+
+
+
+
+		{!-- {if no_results}
+		<p>There are no entries for this category.</p>
+		{/if} --}
+		{if no_results}
+		{redirect="404"}
+		{/if}
+		{paginate}
+		<!-- Pagination -->
+		<div class="row content">
+			<div class="pagination twelve columns">
+			{pagination_links}
+				<ul>
+					{page}
+						<li class="{if current_page}active{/if}"><a href="{pagination_url}">{pagination_page_number}</a></li>
+					{/page}
+				</ul>
+			{/pagination_links}
+			</div>
+		</div>
+		{/paginate}
+
+
+
+		<!--  Single Article================================================================= -->
+		<article class="twelve columns blogroll">
+			<div class="nine columns">
+				<div class="tag_wrap">
+				{categories}
+					{if category_id == "478"}
+						<span class="tag coming_soon">Guest Post</span>
+					{if:elseif category_id=="472"}
+						<span class="tag staff_pick">Author Interview</span>
+					{/if}
+				{/categories}
+				</div>
+				<h3 class="title"><a href="{site_url}blog/{url_title}">{title}</a></h3>
+				<h6 class="author">Posted on {entry_date format="%F %j, %Y"} {if comment_total > 0}<a href="{site_url}blog/{url_title}" class="comments">{comment_total} comment{if comment_total > 1}s{/if}</a>{/if}</h6>
+
+				<p>{blog_content strip_tags="true" allowable_tags="<a><em>" word_limit="70"}</p>
+				</a></em>
+
+
+			</div>
+			<div class="three columns collapse promoted_item">
+
+				{if blog_product != "" }
+					{exp:playa:children field="blog_product"}
+						<div class="blog_image blog_product">
+							{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+								<img src="{image:url:grid}" title="{title}" />
+							{/exp:channel_images:images}
+						</div>
+					{/exp:playa:children}
+				{/if}
+
+				{if blog_author !=""}
+					{exp:playa:children field="blog_author"}
+						<div class="blog_image blog_author">
+							{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+								<img src="{image:url:medium}" title="{title}" />
+							{/exp:channel_images:images}
+						</div>
+					{/exp:playa:children}
+				{/if}
+
+<!--
+				{if blog_event !=""}
+					{exp:playa:children field="blog_event"}
+						<div class="blog_image">
+							{exp:channel_images:images entry_id="{entry_id}" limit="1"}
+								<img src="{image:url}" title="{title}" />
+							{/exp:channel_images:images}
+						</div>
+					{/exp:playa:children}
+				{/if}
+-->
+
+
+			</div>
+		</article><!-- end single article -->
+		{/exp:channel:entries}
+
+	</div>
+	</div><!--end ten-->
+</div>
+
+
+
+	</div>
+</div><!-- end main -->
+
+
+<!--  ========================================================================== -->
+	<!-- # Green Insert -->
+	<section class="home_insert">
+		<div class="row">
+
+			<!-- Upcoming Events -->
+			<div class="four columns">
+				<div class="insert_feed">
+					<header>
+						<h3 class="heading"><span class="serif">Upcoming</span> Events</h3>
+					</header>
+					<div class="inner_content">
+						<ul class="insert_events">
+						<?
+							$matrixFieldId = 150;
+							$channelId = 4;
+
+							$productSQL = "SELECT exp_channel_titles.entry_id as `entry_id`, exp_matrix_data.col_id_8 as `event_end_date` ,exp_matrix_data.col_id_7 as `locations` ,exp_channel_titles.url_title as `event_url_title`, exp_channel_titles.title as `event_title`, exp_matrix_data.col_id_5 as `event_time` FROM exp_channel_titles left join exp_matrix_data on exp_matrix_data.entry_id = exp_channel_titles.entry_id where exp_channel_titles.channel_id = ".$channelId." and exp_matrix_data.field_id = ".$matrixFieldId." order by exp_matrix_data.col_id_5 asc limit 5";
+							$productQuery = $this->EE->db->query($productSQL);
+							$productArray = $productQuery->result_array();
+
+							foreach($productArray as $key => $val)
+							{
+								$getRelationshipsSQL = "select exp_playa_relationships.child_entry_id as `child_entry_id` from exp_playa_relationships left join exp_channel_titles on exp_channel_titles.entry_id = exp_playa_relationships.child_entry_id where exp_playa_relationships.parent_entry_id = '".$val['entry_id']."' order by exp_playa_relationships.parent_field_id desc";
+								$getRelationshipsQuery = $this->EE->db->query($getRelationshipsSQL);
+								$getRelationshipsArray = $getRelationshipsQuery->result_array();
+								$fullImageUrl = '';
+
+								foreach($getRelationshipsArray as $relationshipKey => $relationshipVal)
+								{
+									$counter=0;
+									@$imageDetails = $this->EE->channel_images_model->get_images($relationshipVal['child_entry_id']);
+									if (count($imageDetails) > 0)
+									{
+										$counter++;
+										if ($counter == 1) {$ending_segment = 'tiny';}
+										else{$ending_segment = 'small';}
+										break;
+									}
+								}
+								if (count($imageDetails) == 0)
+								{
+									@$imageDetails = $this->EE->channel_images_model->get_images($val['entry_id']);
+									$ending_segment = 'small';
+								}
+
+
+								$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+								$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+								$resizedImageFileName = $imageFileName.'__'.$ending_segment.$extension;
+								$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+
+
+
+								if ($val['event_time'] != NULL)
+								{
+									?>
+										<li>
+											<a href="{site_url}events/<?=$val['event_url_title']?>">
+												<div class="insert_left">
+													<img src="<?=$fullImageUrl?>" title="<?=$val['event_title']?>" />
+												</div>
+												<div class="insert_right">
+													<h4 class="title"><?=$val['event_title']?></h4>
+													<h5 class="date">
+														<?
+
+															if ($val['event_end_date'] == '' or $val['event_end_date'] == NULL or $val['event_end_date'] == 0){
+																echo date('F j, Y', $val['event_time']);
+															}
+															else{
+																echo date('F j, Y', $val['event_time']);
+															}
+
+															if ($val['event_end_date'] != '' or $val['event_end_date'] != NULL or $val['event_end_date'] != 0){
+																echo '&nbsp;&ndash;&nbsp;'.date('M j, Y', $val['event_end_date']);
+															}
+
+														?>
+													</h5>
+													<h6 class="location">
+														<?
+														$locations = json_decode($val['locations']);
+														if ($locations->city != '')
+														{
+															echo $locations->city;
+														}
+
+														if ($locations->city != '' and $locations->region != ''){echo ', ';}
+
+														if ($locations->region != '')
+														{
+															echo $locations->region;
+														}
+														?>
+													</h6>
+												</div>
+											</a>
+										</li>
+									<?
+								}
+							}
+						?>
+						</ul>
+					</div>
+				</div>
+				<div class="insert_link">
+					<a href="{site_url}events">View All Events</a>
+				</div>
+			</div>
+
+
+			<div class="eight columns">
+				<div class="twitter_box" id="tweets">
+					<ul id="tweet-more">
+						<span class="loading-text"><img src="{site_url}images/ajax-loader.gif" alt="Please wait while Twitter feed loads..." /></span>
+				      </ul>
+				</div>
+				<div class="blog_twitter">
+					 <a href="https://twitter.com/beyondwordspub" class="twitter-follow-button" data-show-count="false">Follow @beyondwordspub</a>
+					<script>!function(d,s,id){var js,fjs=d.getElementsByTagName(s)[0];if(!d.getElementById(id)){js=d.createElement(s);js.id=id;js.src="//platform.twitter.com/widgets.js";fjs.parentNode.insertBefore(js,fjs);}}(document,"script","twitter-wjs");</script>
+				</div>
+			</div>
+
+		</div>
+	</section>
+
+{embed='includes/footer}

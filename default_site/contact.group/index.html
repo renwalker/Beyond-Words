@@ -1,0 +1,82 @@
+{embed='includes/header'}
+
+<div role="main" class="row">
+
+	{embed='about/sidebar_about'}
+
+	<div class="ten columns">
+		<div class="bw_form content readability">
+
+		{exp:freeform:form
+				form_name="general_inquiries"
+				inline_errors="yes"
+				return="contact/thanks"
+				required="email_address|inquiry"
+			}
+
+			<h1 class="title">{freeform:form_label}</h1>
+			<p>
+				Beyond Words Publishing<br />
+				20827 NW Cornell Rd, Suite 500<br />
+				HIllsboro, OR 97124<br />
+				Phone: {phone_number_tracking}<br />
+				Fax: (503) 531-8773</p>
+			<p>
+				Questions, comments, concerns, or just want to say hi?&nbsp; Fill out the form below and we will get back to you as soon as we can. Thanks!</p>
+
+			<p>{freeform:form_description}</p>
+
+			{if last_segment == "thanks"}
+				<div class="success_message">
+					<h2 class="serif black">Thank You!</h2>
+					<p>Your message has been successfully sent.  We appreciate hearing from you and look forward to being able to answer your questions.</p>
+				</div>
+			{if:else}
+
+
+			<fieldset>
+				{if freeform:general_errors}
+				    <h2>There were some error(s) with your submission:</h2>
+				    <ul>
+				        {freeform:general_errors}
+				        <li>{freeform:error_message}</li>
+				        {/freeform:general_errors}
+				    </ul>
+				{/if}
+
+				{if freeform:error:email_address || freeform:error:inquiry }
+					<p class="error_message">Whoops! There were some error(s) with your submission.  Please fill out the required fields.</p>
+				{/if}
+
+
+
+				<div class="six columns">
+					<label for="full_name">{freeform:label:full_name}</label>
+					{freeform:field:full_name attr:id="full_name"}
+				</div>
+
+				<div class="six columns {if freeform:error:email_address}error{/if} ">
+					<label for="email_address">{freeform:label:email_address} <span>*</span></label>
+					{freeform:field:email_address attr:id="email_address"}
+				</div>
+
+				<div class="twelve columns {if freeform:error:inquiry}error{/if}">
+					<label for="inquiry">Questions or Comments <span>*</span></label>
+					{freeform:field:inquiry attr:id="inquiry"}
+				</div>
+
+				<div class="twelve columns">
+					<button class="button_arrows_red" type="submit">Submit</button>
+				</div>
+			</fieldset>
+			{/if}
+
+		{/exp:freeform:form}
+
+		</div>
+
+	</div>
+
+</div>
+
+{embed='includes/footer'}

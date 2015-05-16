@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/"
+  xmlns:dsq="http://www.disqus.com/"
+  xmlns:dc="http://purl.org/dc/elements/1.1/"
+  xmlns:wp="http://wordpress.org/export/1.0/"
+>
+  <channel>
+    {exp:channel:entries channel="blog"}
+    <item>
+      <!-- title of article -->
+      <title>{title}</title>
+      <!-- absolute URI to article -->
+      <link>{site_url}blog/{url_title}</link>
+      <!-- thread body; use cdata; html allowed (though will be formatted to DISQUS specs) -->
+      <content:encoded><![CDATA[{blog_content}]]></content:encoded>
+      <!-- value used within disqus_identifier; usually internal identifier of article -->
+      <dsq:thread_identifier>{entry_id}</dsq:thread_identifier>
+      <!-- creation date of thread (article), in GMT -->
+      <wp:post_date_gmt>{gmt_entry_date format="%Y-%m-%d %H:%i:%s"}</wp:post_date_gmt>
+      <!-- open/closed values are acceptable -->
+    </item>
+    {/exp:channel:entries}
+  </channel>
+</rss>

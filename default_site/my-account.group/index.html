@@ -1,0 +1,209 @@
+<?
+	$this->EE =& get_instance();
+
+	$this->EE->load->model('Member_model');
+	$this->EE->load->library('auth');
+	$this->EE->db->cache_off();
+	$this->EE->load->library('validate');
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+	$this->EE->load->model('cartthrob_members_model');
+
+
+	$this->EE->load->library('cartthrob_emails');
+	$this->EE->load->library('cartthrob_session');
+
+	if (isset($_POST['loginButton']))	
+	{
+		$proceed = 1;
+		if (empty($_POST['username']))
+		{
+			$error2['username'] = '<span class="form_error">Required</span>'; 
+			$proceed = 0;
+		}
+		if (empty($_POST['password']))
+		{
+			$error2['password'] = '<span class="form_error">Required</span>'; 
+			$proceed = 0;
+		}
+
+		if ($proceed == 1)
+		{
+			$username = $_POST['username'];
+			$password = $_POST['password'];
+			$var = $this->EE->auth->authenticate_username($username,$password);
+
+			if ($var)
+			{
+				$var->start_session();
+
+				if (isset($_GET['return']))
+				{
+					$this->EE->functions->redirect($_GET['return']);
+				}
+				else
+				{
+					$this->EE->functions->redirect('/my-account');
+				}
+			}
+			else
+			{
+				$error2['incorect'] = '<br /><div style="clear:both;" class="checkout_error">Invalid Username/Password combination</div>';
+			}
+		}
+	}
+
+	if (isset($_POST['regusterButton']))
+	{
+		$formProceed = 1;
+		$username = $_POST['username'];
+		$password = $_POST['password'];
+		$password_confirm = $_POST['password_confirm'];
+
+		if (!filter_var($username, FILTER_VALIDATE_EMAIL))
+		{
+			$registerError['username'] = '<span class="form_error">Invalid</span>';
+			$formProceed = 0;
+		}
+		else{
+			$this->EE->validate->val_type = 'new';
+			$this->EE->validate->username = $username;
+			$this->EE->validate->validate_username();
+			if ($this->EE->validate->show_errors())
+			{
+				$registerError['username'] = '<span class="form_error">'.$this->EE->validate->show_errors().'</span>';
+				$form_proceed = 0;
+			}
+		}
+
+
+		$this->EE->validate->val_type = 'new';
+		$this->EE->validate->password = $password;
+		$this->EE->validate->password_confirm = $password_confirm;
+		$this->EE->validate->validate_password();
+		if ($this->EE->validate->show_errors())
+		{
+			$registerError['password'] = '<span class="form_error">'.$this->EE->validate->show_errors().'</span>';
+			$formProceed = 0;
+		}
+
+
+		if ($formProceed == 1)
+		{
+			$group_id = 1;
+			$data = array(
+				'username' => $username,  
+				'screen_name' => $username,  
+				'email' => $username, 
+				'password' => $password, 
+				'group_id' => $group_id
+				);
+
+			$create_member_id = $this->EE->cartthrob_members_model->create_member($data);
+
+			$this->EE->cartthrob_members_model->login_member($create_member_id);
+			
+			if (isset($_GET['return']))
+			{
+				$this->EE->functions->redirect($_GET['return']);
+			}
+			else
+			{
+				$this->EE->functions->redirect('/my-account');
+			}
+		}
+	}
+
+	$memberId = $this->EE->session->userdata('member_id')
+
+?>
+
+{embed='includes/header'}
+{breadcrumbs_account}
+<div role="main" class="row">
+	<div class="twelve columns">
+	<div id="checkout">
+		<div class="row">
+		<?
+			if (empty($memberId))
+			{
+				?>
+				<div class="one columns"></div>
+				<div class="four columns">
+					<div class="row">
+						<h1 class="title">Login</h1>
+					</div>
+					<form method="POST">
+						<input type="hidden" name="XID" value="{XID_HASH}" /> 
+						<div class="row">
+							<label>Username</label><?=((isset($error2['username']))?$error2['username']:'')?>
+							<input type="text" name="username" />
+						</div>
+						<div class="row">
+							<label>Password</label><?=((isset($error2['password']))?$error2['password']:'')?>
+							<input type="password"  class="co_input" name="password" />
+						</div>
+						<div class="row">
+							<input type="hidden" name="loginButton" value="clicked" /><?=((isset($error2['incorect']))?$error2['incorect']:'')?>
+							<button class="button_arrows_red">Login</button>
+						</div>
+						<div class="row">
+							<b>Please note:</b> If you created an account prior to December 18th, 2012, you will need to create a new account. We apologize for the inconvenience. If you need assistance setting up your new account please contact us at info@beyondword.com or {phone_number_tracking}.
+						</div>
+					</form>
+				</div>
+				<div class="two columns"></div>
+				<div class="five columns">
+					<div class="row">
+						<h1 class="title">Register</h1>
+					</div>
+					<form method="POST">
+						<input type="hidden" name="XID" value="{XID_HASH}" /> 
+						<div class="row">
+							<label>Email</label><?=((isset($registerError['username']))?$registerError['username']:'')?>
+							<input type="text" name="username" />
+						</div>
+						<div class="row">
+							<label>Password</label><?=((isset($registerError['password']))?$registerError['password']:'')?>
+							<input type="password" class="co_input" name="password" />
+						</div>
+						<div class="row">
+							<label>Confirm Password</label>
+							<input type="password" name="password_confirm" />
+						</div>
+						<div class="row">
+							<input type="hidden" name="regusterButton" value="clicked" />
+							<button class="button_arrows_red">Register</button>
+						</div>
+					</form>
+				</div>
+				<?		
+			}
+			else
+			{
+				?>
+				<div class="twelve columns my_account">
+					{if segment_2 == ''}
+						{embed=my-account/account-info}
+					{if:elseif segment_2 == 'edit-billing'}
+						{embed=my-account/edit-billing-information}
+					{if:elseif segment_2 == 'edit-shipping'}
+						{embed=my-account/edit-shipping-information}
+					{if:elseif segment_2 == 'digital-purchases'}
+						{embed=my-account/digital-items}
+					{if:elseif segment_2 == 'digital-assets'}
+						{embed=my-account/.digital-assets}
+					{if:elseif segment_2 == 'special-access'}
+						{embed=my-account/.specialaccess}						
+					{if:else}
+						{embed=my-account/account-info}
+					{/if}
+				</div>
+				<?
+			}
+		?>
+		</div>
+	</div>
+	</div>
+</div>
+{embed='includes/footer'}

@@ -1,0 +1,192 @@
+<?php
+
+  	include($_SERVER['DOCUMENT_ROOT'].'/templates/includes/arrayList.php');
+	$this->EE =& get_instance();
+    $this->EE->load->add_package_path(PATH_THIRD.'cartthrob/');
+    $this->EE->load->library('cartthrob_loader');
+    $this->EE->load->model('order_model');
+	$siteURL = 'http://www.beyondword.com';
+
+	$orderInfo = $this->EE->cartthrob->cart->order();
+	if ((!array_key_exists('items', $orderInfo)) OR 
+		!is_array($orderInfo['items']) OR
+		1 > count($orderInfo['items'])
+		)
+	{
+		$orderInfo = unserialize(base64_decode($_SESSION['order_info']));
+	}
+?>
+<!DOCTYPE html>
+<head>
+	<title></title>
+	<style>
+		body,html
+		{
+			margin:0px;
+		}
+	</style>
+</head>
+<body>
+	<!-- HEADER -->
+	<table width="100%" cellspacing="0" cellpadding="0" id="header">
+		<tr>
+			<td align="center" bgcolor="#26B6A2">
+				<div style="height:70px; overflow:hidden;">
+				<table align="center" cellspacing="0" cellpadding="0" height="70">
+					<tr>
+						<td width="258" align="center">
+							<a href="<?=$siteURL?>/about" style="color:#404042; font-family:Arial; font-size:13px; font-weight:bold; text-decoration:none;">ABOUT US</a>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:#404042; font-family:Arial; font-size:13px;">|</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<a href="<?=$siteURL?>/blog" style="color:#404042; font-family:Arial; font-size:13px; font-weight:bold; text-decoration:none;">OUR BLOG</a>
+						</td>
+						<td width="233" style="height:70px"><img src="<?=$siteURL?>/templates/images/email/logo1.jpg" style="height:70px" /></td>
+						<td width="258">
+							<table>
+								<tr>
+									<td style="padding-left:17px;"><a href="https://www.facebook.com/BeyondWordsPublishing"><img src="<?=$siteURL?>/templates/images/email/facebook.jpg" border="0" /></a></td>
+									<td style="padding-left:17px;"><a href="https://twitter.com/beyondwordspub"><img src="<?=$siteURL?>/templates/images/email/twitter.jpg" border="0" /></a></td>
+									<td style="padding-left:17px;"><a href="https://plus.google.com/109996887742939815613/posts"><img src="<?=$siteURL?>/templates/images/email/google.jpg" border="0" /></a></td>
+									<td style="padding-left:17px;"><a href="http://www.youtube.com/user/BeyondWordsPub"><img src="<?=$siteURL?>/templates/images/email/youtube.jpg" border="0" /></a></td>
+								</tr>
+							</table>
+						</td>
+					</tr>
+				</table>
+				</div>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<table align="center" cellspacing="0" cellpadding="0">
+					<tr>
+						<td width="258" align="center"></td>
+						<td width="233">
+							<img src="<?=$siteURL?>/templates/images/email/logo2.jpg" />
+						</td>
+						<td width="258"></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	<table>
+	<br />
+	<table width="750" align="center" cellspacing="0" cellpadding="0">
+		<tr>
+			<td valign="top">
+				<h3 style="font-size:15px; font-family:Arial; color:#404042;">Billing Information</h3>
+				<span style="font-family:Arial; line-height:18px; color:#404042;">
+					<?=$orderInfo['billing_first_name']?> <?=$orderInfo['billing_last_name']?><br />
+					<?=$orderInfo['billing_address']?> <?=$orderInfo['billing_address2']?><br />
+					<?=$orderInfo['billing_city']?>, <?=((isset($statesArray[$orderInfo['billing_state']]))?$statesArray[$orderInfo['billing_state']]:$orderInfo['billing_state'])?>, <?=$orderInfo['billing_zip']?><br />
+					<?=$countryArray[$orderInfo['billing_country']];?>
+				</span>
+			</td>
+			<td valign="top">
+				<h3 style="font-size:15px; font-family:Arial; color:#404042;">Shipping Information</h3>
+				<span style="font-family:Arial; line-height:18px; color:#404042;">
+					<?=$orderInfo['shipping_first_name']?> <?=$orderInfo['shipping_last_name']?><br />
+					<?=$orderInfo['shipping_address']?> <?=$orderInfo['shipping_address2']?><br />
+					<?=$orderInfo['shipping_city']?>, <?=((isset($statesArray[$orderInfo['shipping_state']]))?$statesArray[$orderInfo['shipping_state']]:$orderInfo['shipping_state'])?>, <?=$orderInfo['shipping_zip']?><br />
+					<?=$countryArray[$orderInfo['shipping_country']];?>
+				</span>
+			</td>
+		</tr>
+	</table>
+	<table width="750" align="center" cellspacing="0" cellpadding="0">
+		<tr>
+			<td>
+				<h4 style="font-size:18px; font-family:Arial; color:#404042;">Order Id: #<?=($this->EE->cartthrob->store->config("last_order_number")+1)?> (<span style="font-size:14px; font-weight:bold;"><?php echo date('M jS, Y') ?></span>)</h4>
+			</td>
+		</tr>
+		<tr>
+			<td>
+				<table cellspacing="0" cellpadding="0" width="750">
+					<tr>
+						<td style="font-size:13px; color:#404042; font-family:Arial; font-weight:bold;">ITEM</td>
+						<td style="font-size:13px; color:#404042; font-family:Arial; font-weight:bold;">PRICE</td>
+						<td style="font-size:13px; color:#404042; font-family:Arial; font-weight:bold;" align="center">QUANTITY</td>
+						<td style="font-size:13px; color:#404042; font-family:Arial; font-weight:bold;">TOTAL PRICE</td>
+					</tr>
+					<tr><td colspan="4"><img src="<?=$siteURL?>/templates/images/email/light_separator.jpg"></td></tr>
+					<?
+					foreach($orderInfo['items'] as $keyItem => $valItem)
+					{
+						@$imageDetails = $this->EE->channel_images_model->get_images($valItem['entry_id']);
+	
+						$extension = substr($imageDetails[0]->filename, strrpos($imageDetails[0]->filename, '.'), strlen($imageDetails[0]->filename));
+						$imageFileName = str_replace($extension, '', $imageDetails[0]->filename);
+						$resizedImageFileName = $imageFileName.'__tiny'.$extension;
+						
+						$fullImageUrl = '/images/uploads/authors/'.$imageDetails[0]->entry_id.'/'.$resizedImageFileName;
+
+
+						?>
+						<tr>
+							<td>
+								<table>
+									<tr>
+										<td style="padding-right:15px;"><img src="<?=$siteURL.$fullImageUrl;?>" alt="<?=$valItem['title']?>" /></td>
+										<td valign="top">
+											<table>
+												<tr><td style="font-size:15px; font-weight:bold; color:#404042; font-family:Arial;"><?=$valItem['title']?></td></tr>
+												<tr><td style="font-size:13px; color:#CCCCCC; font-family:Arial;"><?=strtoupper($valItem['item_options']['product_type'])?></td></tr>
+												<tr><td style="font-size:15px; color:#404042; font-family:Arial;"><?=((isset($valItem['item_options']['customized_message']) and $valItem['item_options']['customized_message'] != '')?'<b>Custom Message:</b> <br />'.$valItem['item_options']['customized_message']:'')?></td></tr>
+												<?
+													if (str_replace(' ', '', strtolower($valItem['item_options']['purchase_type'])) != 'instock')
+													{
+													?>
+														<tr><td style="font-size:13px; color:#CCCCCC; font-family:Arial;"><?=strtoupper($valItem['item_options']['purchase_type'])?></td></tr>
+													<?
+													}
+												?>
+												
+											</table>
+										</td>
+									</tr>
+								</table>
+							</td>
+							<td style="font-size:13px; color:#404042; font-family:Arial;">$<?=money_format('%i' , $valItem['price'])?></td>
+							<td style="font-size:13px; color:#404042; font-family:Arial;" align="center"><?=$valItem['quantity']?></td>
+							<td style="font-size:13px; color:#404042; font-family:Arial;"><b>$<?=money_format('%i' , ($valItem['price']*$valItem['quantity']))?></b></td>
+						</tr>
+						<tr><td colspan="4"><img src="<?=$siteURL?>/templates/images/email/light_separator.jpg"></td></tr>
+						<?
+					}
+					?>
+					<tr><td colspan="4"><img src="<?=$siteURL?>/templates/images/email/heavy_separator.jpg"></td></tr>
+					<tr>
+						<td></td><td></td>
+						<td style="font-family:Arial; font-size:16px; color:#404042; height:25px; font-weight:bold;" align="right">Shipping:&nbsp;&nbsp;&nbsp; </td>
+						<td style="font-family:Arial; font-size:16px; color:#404042; height:25px; font-weight:bold;">$<?=money_format('%i', $orderInfo['shipping_plus_tax'])?></td>
+					</tr>
+					<?
+						if ($orderInfo['discount'] != '0.00')
+						{
+							?>
+							<tr>
+								<td></td><td></td>
+								<td style="font-family:Arial; font-size:16px; color:#404042; height:25px; font-weight:bold;" align="right">Discount&nbsp;&nbsp;&nbsp; </td>
+								<td style="font-family:Arial; font-size:16px; color:#404042; height:25px; font-weight:bold;">-$<?=money_format('%i', $orderInfo['discount'])?></td>
+							</tr>
+							<?
+						}
+					?>
+					<!--<tr>
+						<td></td><td></td><td></td>
+						<td style="font-family:Arial; font-size:13px; color:#404042; height:25px;"><b>%20 off ( Coupon )</b></td>
+					</tr>-->
+					<tr>
+						<td></td><td></td>
+						<td align="right" style="font-family:Arial; font-size:16px; color:#404042; height:25px; font-weight:bold;">Total:&nbsp;&nbsp;&nbsp; </td>
+						<td style="font-family:Arial; font-size:16px; color:#404042; height:25px; font-weight:bold;">$<?=money_format('%i', $orderInfo['total'])?></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+	<br />
+	<table width="100%" cellspacing="0" cellpadding="0" >
+		<tr>
+			<td style="width:100%; background-color:#282828; height:70px;" bgcolor="#282828">&nbsp;</td>
+		</tr>
+	</table>
+</body>
+</html>
